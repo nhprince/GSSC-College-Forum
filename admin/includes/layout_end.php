@@ -26,6 +26,16 @@ function showToast(msg, type='info') {
 }
 
 function confirm_(msg) { return window.confirm(msg); }
+
+document.getElementById('admin-logout-btn')?.addEventListener('click', async () => {
+  if (!confirm('Log out?')) return;
+  try {
+    await fetch('/api/auth/logout.php', {
+      method: 'POST', headers: {'X-CSRF-Token': CSRF}, credentials: 'same-origin'
+    });
+  } catch(_) {}
+  window.location.href = '/login.php';
+});
 </script>
 </body>
 </html>
