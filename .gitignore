@@ -6,6 +6,12 @@ config.local.php
 uploads/
 logs/
 
+# Build artifacts
+*.zip
+
+# Runtime error logs
+*error_log
+
 # OS / editor
 .DS_Store
 .idea/

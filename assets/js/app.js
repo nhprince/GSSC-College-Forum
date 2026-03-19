@@ -149,6 +149,21 @@ async function refreshOnlineCount() {
   } catch(_) {}
 }
 
+/* Page Visibility - reconnect SSE and refresh data when tab becomes active again */
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') {
+    // Reconnect chat SSE if it died while tab was hidden
+    if (typeof Chat !== 'undefined' && Chat._initialized) {
+      if (Chat.eventSource && Chat.eventSource.readyState === EventSource.CLOSED) {
+        Chat.connectSSE();
+      }
+    }
+    // Refresh counts
+    refreshBadges();
+    refreshOnlineCount();
+  }
+});
+
 /* Init */
 document.addEventListener('DOMContentLoaded', () => {
   goTo('chat');

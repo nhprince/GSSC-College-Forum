@@ -21,12 +21,14 @@ function validateCsrf(): void {
 /*  JSON responses  */
 function jsonSuccess(array $data = [], int $status = 200): never {
     http_response_code($status);
+    header('Content-Type: application/json');
     echo json_encode(['success' => true, 'data' => $data]);
     exit;
 }
 
 function jsonError(string $msg, string $code = 'ERROR', int $status = 400): never {
     http_response_code($status);
+    header('Content-Type: application/json');
     echo json_encode(['success' => false, 'error' => $msg, 'code' => $code]);
     exit;
 }

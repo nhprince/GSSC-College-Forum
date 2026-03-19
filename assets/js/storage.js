@@ -15,6 +15,9 @@ const Storage_ = {
 
   search(q) { this._q = q; this._loaded = false; this.fetch(); },
 
+  // Force a fresh reload (e.g. after upload)
+  reload() { this._loaded = false; this.fetch(); },
+
   bindCategoryTabs() {
     document.querySelectorAll('[data-storage-cat]').forEach(btn => {
       btn.addEventListener('click', () => {
@@ -48,12 +51,22 @@ const Storage_ = {
       }
       files.forEach(f => list.insertAdjacentHTML('beforeend', this.renderRow(f)));
     } catch(err) {
+      // Reset _loaded so the user can retry by clicking Storage again
+      this._loaded = false;
+
       const list2 = document.getElementById('storage-list');
-      if (list2) list2.innerHTML = `<div class="empty-state">
-        <div class="empty-icon">&#x26A0;</div>
-        <div class="empty-title">Could not load files</div>
-        <div class="empty-sub">${err.message || 'Please refresh the page.'}</div>
-      </div>`;
+      if (list2) {
+        list2.innerHTML = `<div class="empty-state">
+          <div class="empty-icon">&#x26A0;</div>
+          <div class="empty-title">Could not load files</div>
+          <div class="empty-sub">${err.message || 'Tap here to retry.'}</div>
+        </div>`;
+        const errEl = list2.querySelector('.empty-state');
+        if (errEl) {
+          errEl.style.cursor = 'pointer';
+          errEl.addEventListener('click', () => { this.reload(); });
+        }
+      }
     }
   },
 
@@ -110,7 +123,7 @@ const Storage_ = {
         const data = await res.json();
         if (data.success) {
           showToast(data.data.message || 'Uploaded!', 'success');
-          this._loaded = false; this.fetch();
+          this.reload();
         } else { showToast(data.error || 'Upload failed', 'error'); }
       } catch(_) { showToast('Upload failed', 'error'); }
     };

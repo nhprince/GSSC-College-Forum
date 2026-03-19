@@ -1,17 +1,17 @@
 <?php
 declare(strict_types=1);
 require_once '../../config.php';
-require_once '../../includes/db.php';
-require_once '../../includes/auth.php';
-require_once '../../includes/functions.php';
+require_once '../../includes/api_init.php';
 require_once '../../includes/uploader.php';
 initSession();
 requireLogin();
+
+ob_clean();
 header('Content-Type: application/json');
 
 $method = $_SERVER['REQUEST_METHOD'];
 
-//  GET: fetch post feed 
+// GET: fetch post feed
 if ($method === 'GET') {
     // counts_only mode for header refresh
     if (!empty($_GET['counts_only'])) {
@@ -25,8 +25,12 @@ if ($method === 'GET') {
             ");
             $stmt->execute([$userId]);
             $unread = (int)$stmt->fetchColumn();
+            ob_clean();
             jsonSuccess(['unread_posts' => $unread]);
-        } catch (\Throwable $e) { jsonSuccess(['unread_posts' => 0]); }
+        } catch (\Throwable $e) {
+            ob_clean();
+            jsonSuccess(['unread_posts' => 0]);
+        }
     }
 
     $page   = max(1, (int)($_GET['page']  ?? 1));
@@ -51,29 +55,33 @@ if ($method === 'GET') {
 
         $whereStr = implode(' AND ', $where);
 
-        // Count
+        // Count (uses params without userId/limit/offset)
         $cStmt = $pdo->prepare("SELECT COUNT(*) FROM posts p WHERE {$whereStr}");
         $cStmt->execute($params);
         $total = (int)$cStmt->fetchColumn();
 
-        // Posts
-        $params[] = $limit; $params[] = $offset;
+        // Build final params: inject userId for the subquery, then limit/offset
+        $queryParams = $params;
+        $queryParams[] = $userId;
+        $queryParams[] = $limit;
+        $queryParams[] = $offset;
+
         $stmt = $pdo->prepare("
             SELECT
                 p.*,
-                (SELECT 1 FROM post_reads WHERE post_id = p.id AND user_id = {$userId} LIMIT 1) AS `read`,
+                (SELECT 1 FROM post_reads WHERE post_id = p.id AND user_id = ? LIMIT 1) AS `read`,
                 (SELECT COUNT(*) FROM post_reads WHERE post_id = p.id) AS read_count,
-                po.id          AS poll_id,
-                po.is_closed   AS poll_closed,
+                po.id           AS poll_id,
+                po.is_closed    AS poll_closed,
                 po.is_anonymous AS poll_anon,
-                po.ends_at     AS poll_ends_at
+                po.ends_at      AS poll_ends_at
             FROM posts p
             LEFT JOIN polls po ON po.post_id = p.id
             WHERE {$whereStr}
             ORDER BY p.is_pinned DESC, p.created_at DESC
             LIMIT ? OFFSET ?
         ");
-        $stmt->execute($params);
+        $stmt->execute($queryParams);
         $rows = $stmt->fetchAll();
 
         // For poll posts: fetch options + votes
@@ -94,15 +102,18 @@ if ($method === 'GET') {
         }
 
         $posts = array_map(fn($r) => formatPost($r, $pollData, hasRole('moderator')), $rows);
+
+        ob_clean();
         jsonSuccess(['posts' => $posts, 'total' => $total, 'page' => $page, 'limit' => $limit]);
 
     } catch (\Throwable $e) {
         error_log($e->getMessage());
+        ob_clean();
         jsonError('Failed to load posts.','DB_ERROR',500);
     }
 }
 
-//  POST: create post 
+// POST: create post
 elseif ($method === 'POST') {
     requireRole('moderator');
     validateCsrf();
@@ -184,19 +195,22 @@ elseif ($method === 'POST') {
         }
 
         logAction('post.created', 'post', $postId, ['type' => $postType, 'title' => $title]);
+        ob_clean();
         jsonSuccess(['id' => $postId], 201);
 
     } catch (\Throwable $e) {
         error_log($e->getMessage());
+        ob_clean();
         jsonError('Failed to create post.','DB_ERROR',500);
     }
 }
 
 else {
+    ob_clean();
     jsonError('Method not allowed.','METHOD_NOT_ALLOWED',405);
 }
 
-//  Format helper 
+// Format helper
 function formatPost(array $r, array $pollData, bool $showReadCount): array {
     $post = [
         'id'          => (int)$r['id'],

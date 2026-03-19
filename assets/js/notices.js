@@ -19,6 +19,11 @@ const Notices = {
     this._q = q; this._loaded = false; this._page = 1; this.load();
   },
 
+  // Call this to force a fresh reload (e.g. after creating a post)
+  reload() {
+    this._loaded = false; this._page = 1; this._hasMore = true; this.load();
+  },
+
   bindScroll() {
     const feed = document.getElementById('notices-feed');
     if (!feed) return;
@@ -61,13 +66,22 @@ const Notices = {
       this._hasMore = this._page * 20 < (data.total || 0);
 
     } catch(err) {
+      // Reset _loaded so the user can retry by clicking Notice Board again
+      this._loaded = false;
+
       const feed2 = document.getElementById('notices-feed');
       if (feed2 && replace) {
         feed2.innerHTML = `<div class="empty-state">
           <div class="empty-icon">&#x26A0;</div>
           <div class="empty-title">Could not load notices</div>
-          <div class="empty-sub">${err.message || 'Please refresh the page.'}</div>
+          <div class="empty-sub">${err.message || 'Tap here to retry.'}</div>
         </div>`;
+        // Let the error state be tappable to retry
+        const errEl = feed2.querySelector('.empty-state');
+        if (errEl) {
+          errEl.style.cursor = 'pointer';
+          errEl.addEventListener('click', () => { this.reload(); });
+        }
       }
     }
   },
