@@ -1,0 +1,12 @@
+# Local configuration (contains secrets)
+config.php
+config.local.php
+
+# Runtime directories
+uploads/
+logs/
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
