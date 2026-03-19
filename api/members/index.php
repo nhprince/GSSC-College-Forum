@@ -9,19 +9,42 @@ requireLogin();
 header('Content-Type: application/json');
 if ($_SERVER['REQUEST_METHOD'] !== 'GET') jsonError('Method not allowed','METHOD_NOT_ALLOWED',405);
 
-// Lightweight counts-only mode for header badge refresh
+// Lightweight counts-only mode for header badge refresh.
+// Also returns online member list so the sidebar strip updates without visiting Members page.
 if (!empty($_GET['counts_only'])) {
     try {
         $pdo  = getDB();
+
+        // Counts
         $stmt = $pdo->query("
             SELECT COUNT(*) AS total,
                    SUM(last_seen_at >= DATE_SUB(NOW(), INTERVAL 5 MINUTE)) AS online_count
             FROM users WHERE is_active = 1 AND is_approved = 1
         ");
         $row = $stmt->fetch();
-        jsonSuccess(['online_count' => (int)$row['online_count'], 'total' => (int)$row['total']]);
+
+        // Online members for the sidebar strip (just the fields the strip needs)
+        $onlineStmt = $pdo->query("
+            SELECT id, full_name, nickname, avatar
+            FROM users
+            WHERE is_active = 1 AND is_approved = 1
+              AND last_seen_at >= DATE_SUB(NOW(), INTERVAL 5 MINUTE)
+            ORDER BY last_seen_at DESC
+            LIMIT 8
+        ");
+        $onlineMembers = array_map(fn($r) => [
+            'id'       => (int)$r['id'],
+            'nickname' => $r['nickname'] ?: explode(' ', $r['full_name'])[0],
+            'avatar'   => $r['avatar'],
+        ], $onlineStmt->fetchAll());
+
+        jsonSuccess([
+            'online_count'   => (int)($row['online_count'] ?? 0),
+            'total'          => (int)($row['total'] ?? 0),
+            'online_members' => $onlineMembers,
+        ]);
     } catch(\Throwable $e) {
-        jsonSuccess(['online_count' => 0, 'total' => 0]);
+        jsonSuccess(['online_count' => 0, 'total' => 0, 'online_members' => []]);
     }
 }
 

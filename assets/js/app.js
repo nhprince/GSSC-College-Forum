@@ -138,29 +138,54 @@ async function refreshBadges() {
   } catch(_) {}
 }
 
-/* Online count refresh */
+/* Online count + sidebar strip refresh */
 async function refreshOnlineCount() {
   try {
     const d = await api('members/index.php?counts_only=1');
+
+    // Update header counts
     const oc = document.getElementById('online-count');
     const mc = document.getElementById('member-count');
     if (oc && d.online_count !== undefined) oc.textContent = d.online_count;
     if (mc && d.total !== undefined) mc.textContent = d.total;
+
+    // Update sidebar online strip - fixes the permanent skeleton issue
+    const strip = document.getElementById('online-strip');
+    if (strip && d.online_members !== undefined) {
+      const members = d.online_members || [];
+      if (!members.length) {
+        strip.innerHTML = '<span style="font-size:11px;color:rgba(255,255,255,.3)">None online</span>';
+      } else {
+        strip.innerHTML = members.map(m => {
+          const init = (m.nickname || '?')[0].toUpperCase();
+          const img  = m.avatar
+            ? `<img src="/uploads/avatars/${escAttr(m.avatar)}" alt="">`
+            : init;
+          return `<div class="o-avatar" title="${escAttr(m.nickname || '')}">${img}</div>`;
+        }).join('');
+      }
+    }
   } catch(_) {}
 }
 
-/* Page Visibility - reconnect SSE and refresh data when tab becomes active again */
+function escAttr(s) {
+  return String(s || '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+/* Page Visibility - restart poll and refresh data when tab becomes active */
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') {
-    // Reconnect chat SSE if it died while tab was hidden
-    if (typeof Chat !== 'undefined' && Chat._initialized) {
-      if (Chat.eventSource && Chat.eventSource.readyState === EventSource.CLOSED) {
-        Chat.connectSSE();
-      }
+    // Restart chat polling if it was paused/stopped
+    if (typeof Chat !== 'undefined' && Chat._initialized && !Chat.pollTimer) {
+      Chat.startPoll();
     }
-    // Refresh counts
     refreshBadges();
     refreshOnlineCount();
+  } else {
+    // Pause polling while tab is hidden to save server resources
+    if (typeof Chat !== 'undefined' && Chat._initialized) {
+      Chat.stopPoll();
+    }
   }
 });
 
