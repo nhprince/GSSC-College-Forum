@@ -7,6 +7,9 @@ function initSession(): void {
     ini_set('session.cookie_samesite', 'Strict');
     if (APP_ENV === 'production') ini_set('session.cookie_secure', '1');
     ini_set('session.gc_maxlifetime', (string)SESSION_LIFETIME);
+    // Persistent login: set cookie expiry so browser keeps it after tab/browser close.
+    // Without this, the browser discards the session cookie on close (default behaviour).
+    ini_set('session.cookie_lifetime', (string)SESSION_LIFETIME);
     session_start();
 }
 

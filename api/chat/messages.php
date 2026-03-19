@@ -84,7 +84,7 @@ if ($method === 'GET') {
     }
 
     $user = currentUser();
-    if (!checkRateLimit('msg_' . $user['id'], 'chat_send', 2, 2)) {
+    if (!checkRateLimit('msg_' . $user['id'], 'chat_send', 5, 5)) {
         ob_clean();
         echo json_encode(['success' => false, 'error' => 'Slow down!', 'code' => 'RATE_LIMITED']);
         exit;

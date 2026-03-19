@@ -23,7 +23,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // Basic rate limit
     $ip = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
-    if (!checkRateLimit($ip, 'login', 5, 900)) {
+    if (!checkRateLimit($ip, 'login', 10, 900)) {
         echo json_encode(['success' => false, 'error' => 'Too many attempts. Try again in 15 minutes.']);
         exit;
     }
