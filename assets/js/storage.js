@@ -1,6 +1,3 @@
-/* ============================================================
-   storage.js
-   ============================================================ */
 'use strict';
 
 const Storage_ = {
@@ -35,43 +32,50 @@ const Storage_ = {
     if (!list) return;
     list.innerHTML = this.skelHTML();
     try {
-      const params = new URLSearchParams({
-        page: 1, limit: 30,
-        ...(this._q && { search: this._q }),
-        ...(this._category && { category: this._category })
-      });
-      const { files } = await api(`storage/index.php?${params}`);
+      const params = new URLSearchParams({ page: 1, limit: 30 });
+      if (this._q) params.set('search', this._q);
+      if (this._category) params.set('category', this._category);
+      const data = await api('storage/index.php?' + params.toString());
+      const files = data.files || [];
       list.innerHTML = '';
       if (!files.length) {
         list.innerHTML = `<div class="empty-state">
-          <div class="empty-icon"></div>
+          <div class="empty-icon">&#x1F5C2;</div>
           <div class="empty-title">No files here yet</div>
-          <div class="empty-sub">Be the first to upload a file.</div>
+          <div class="empty-sub">Upload the first file using the button below.</div>
         </div>`;
         return;
       }
       files.forEach(f => list.insertAdjacentHTML('beforeend', this.renderRow(f)));
-    } catch (e) { showToast('Could not load files', 'error'); }
+    } catch(err) {
+      const list2 = document.getElementById('storage-list');
+      if (list2) list2.innerHTML = `<div class="empty-state">
+        <div class="empty-icon">&#x26A0;</div>
+        <div class="empty-title">Could not load files</div>
+        <div class="empty-sub">${err.message || 'Please refresh the page.'}</div>
+      </div>`;
+    }
   },
 
   renderRow(f) {
-    const iconMap = {
-      pdf:' file-icon--pdf', doc:' file-icon--doc', docx:' file-icon--doc',
-      ppt:' file-icon--ppt', pptx:' file-icon--ppt',
-      jpg:' file-icon--img', jpeg:' file-icon--img', png:' file-icon--img',
-      zip:' file-icon--zip'
+    const icons = {
+      pdf:['&#x1F4C4;','file-icon--pdf'], doc:['&#x1F4DD;','file-icon--doc'],
+      docx:['&#x1F4DD;','file-icon--doc'], ppt:['&#x1F4CA;','file-icon--ppt'],
+      pptx:['&#x1F4CA;','file-icon--ppt'], jpg:['&#x1F5BC;','file-icon--img'],
+      jpeg:['&#x1F5BC;','file-icon--img'], png:['&#x1F5BC;','file-icon--img'],
+      zip:['&#x1F4E6;','file-icon--zip']
     };
-    const [icon, cls] = (iconMap[f.file_type] || ' file-icon--default').split(' ');
-    const size  = fmtBytes(f.file_size);
-    const date  = new Date(f.created_at).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'2-digit'});
-    const pend  = !f.is_approved ? '<span class="badge badge-poll" style="margin-left:6px">Pending</span>' : '';
-
-    return `
-    <div class="storage-row" data-id="${f.id}">
+    const [icon, cls] = icons[f.file_type] || ['&#x1F4C1;','file-icon--default'];
+    const size = fmtBytes(f.file_size || 0);
+    const date = f.created_at
+      ? new Date(f.created_at).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'2-digit'}) : '';
+    const pend = !f.is_approved
+      ? '<span class="badge badge-poll" style="margin-left:6px;font-size:10px">Pending</span>' : '';
+    return `<div class="storage-row" data-id="${f.id}">
       <div class="file-icon ${cls}">${icon}</div>
       <div class="file-info">
-        <div class="file-title">${esc(f.title)}${pend}</div>
-        <div class="file-meta">${esc(f.file_type.toUpperCase())}  ${size}  ${date}   ${f.download_count}</div>
+        <div class="file-title">${esc(f.title || '')}${pend}</div>
+        <div class="file-meta">${esc((f.file_type || '').toUpperCase())} &middot; ${size} &middot; ${date} &middot; &#x2B07; ${f.download_count || 0}</div>
       </div>
       <button class="file-dl-btn" onclick="window.location='/api/storage/download.php?id=${f.id}'" title="Download">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="8,17 12,21 16,17"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.88 18.09A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg>
@@ -80,55 +84,58 @@ const Storage_ = {
   },
 
   bindUpload() {
-    document.getElementById('btn-upload')?.addEventListener('click', () => this.openUploadModal());
+    document.getElementById('btn-upload')?.addEventListener('click', () => this.openUpload());
   },
 
-  openUploadModal() {
-    // Simple inline upload prompt for now
+  openUpload() {
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = '.pdf,.doc,.docx,.ppt,.pptx,.jpg,.jpeg,.png,.zip';
-    input.onchange = async (e) => {
-      const file = e.target.files[0];
+    input.onchange = async ev => {
+      const file = ev.target.files[0];
       if (!file) return;
-      const title = prompt('File title:', file.name.replace(/\.[^.]+$/, ''));
-      if (!title) return;
+      const title = prompt('File title (required):', file.name.replace(/\.[^.]+$/, ''));
+      if (!title || !title.trim()) return;
       const fd = new FormData();
       fd.append('file', file);
-      fd.append('title', title);
+      fd.append('title', title.trim());
       fd.append('category', 'notes');
-      fd.append('csrf_token', document.querySelector('meta[name="csrf-token"]').content);
+      showToast('Uploading...');
       try {
-        showToast('Uploading', 'info');
-        const res  = await fetch('/api/storage/upload.php', { method:'POST', body:fd, credentials:'same-origin', headers:{'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content} });
+        const res  = await fetch('/api/storage/upload.php', {
+          method: 'POST',
+          headers: { 'X-CSRF-Token': getCsrf() },
+          body: fd, credentials: 'same-origin'
+        });
         const data = await res.json();
         if (data.success) {
-          showToast(data.data.message, 'success');
-          this._loaded = false;
-          this.fetch();
-        } else {
-          showToast(data.error || 'Upload failed', 'error');
-        }
+          showToast(data.data.message || 'Uploaded!', 'success');
+          this._loaded = false; this.fetch();
+        } else { showToast(data.error || 'Upload failed', 'error'); }
       } catch(_) { showToast('Upload failed', 'error'); }
     };
     input.click();
   },
 
   skelHTML() {
-    return Array(4).fill(0).map(() => `
-      <div class="storage-row" style="pointer-events:none">
-        <div class="skeleton" style="width:40px;height:40px;border-radius:10px;flex-shrink:0"></div>
-        <div style="flex:1;display:flex;flex-direction:column;gap:5px">
-          <div class="skeleton" style="width:55%;height:13px;border-radius:6px"></div>
-          <div class="skeleton" style="width:38%;height:10px;border-radius:6px"></div>
-        </div>
-        <div class="skeleton" style="width:34px;height:34px;border-radius:50%;flex-shrink:0"></div>
-      </div>`).join('');
+    return [1,2,3,4].map(() => `<div class="storage-row" style="pointer-events:none">
+      <div class="skeleton" style="width:40px;height:40px;border-radius:10px;flex-shrink:0"></div>
+      <div style="flex:1;display:flex;flex-direction:column;gap:5px">
+        <div class="skeleton" style="width:55%;height:13px;border-radius:6px"></div>
+        <div class="skeleton" style="width:38%;height:10px;border-radius:6px"></div>
+      </div>
+      <div class="skeleton" style="width:34px;height:34px;border-radius:50%;flex-shrink:0"></div>
+    </div>`).join('');
   }
 };
 
 function fmtBytes(b) {
+  if (!b) return '0 B';
   if (b < 1024) return b + ' B';
   if (b < 1048576) return (b/1024).toFixed(1) + ' KB';
   return (b/1048576).toFixed(1) + ' MB';
+}
+
+function esc(s) {
+  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
