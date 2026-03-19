@@ -40,11 +40,11 @@ const Chat = {
         });
         this.lastId = data.last_id || 0;
         this.scrollBottom();
+        // Images and avatars may not be sized yet — scroll again once they render
+        setTimeout(() => this.scrollBottom(), 100);
+        setTimeout(() => this.scrollBottom(), 400);
       }
-      // Use polling as the primary real-time method on this server.
-      // SSE holds a PHP-FPM worker open for minutes and starves other requests.
-      // Polling fires short ~50ms requests and frees the worker immediately.
-      this.startPoll();
+      this.connectSSE();
     } catch(e) {
       const area2 = document.getElementById('chat-messages');
       if (area2) area2.innerHTML = `<div class="empty-state">
@@ -62,8 +62,29 @@ const Chat = {
     if (dis) dis.style.display = 'block';
   },
 
-  // Polling: fires a short HTTP request every 3 seconds, completes instantly,
-  // frees the PHP worker. New messages appear within 3 seconds max.
+  connectSSE() {
+    if (this.pollTimer) { clearInterval(this.pollTimer); this.pollTimer = null; }
+    this.eventSource?.close();
+    if (!window.EventSource) { this.startPoll(); return; }
+
+    this.eventSource = new EventSource('/api/chat/stream.php?last_id=' + this.lastId);
+    this.eventSource.addEventListener('message', e => {
+      try {
+        const msg = JSON.parse(e.data);
+        this.appendMsg(msg);
+        this.lastId = msg.id;
+      } catch(_) {}
+    });
+    this.eventSource.addEventListener('reconnect', () => {
+      this.eventSource.close();
+      setTimeout(() => this.connectSSE(), 1500);
+    });
+    this.eventSource.onerror = () => {
+      this.eventSource.close();
+      this.startPoll();
+    };
+  },
+
   startPoll() {
     if (this.pollTimer) clearInterval(this.pollTimer);
     this.pollTimer = setInterval(async () => {
@@ -75,15 +96,15 @@ const Chat = {
     }, 3000);
   },
 
-  stopPoll() {
-    if (this.pollTimer) { clearInterval(this.pollTimer); this.pollTimer = null; }
-  },
-
   appendMsg(msg) {
     const area = document.getElementById('chat-messages');
     if (!area) return;
     const empty = area.querySelector('.empty-state');
     if (empty) area.innerHTML = '';
+
+    // Only auto-scroll if user is already near the bottom (within 60px).
+    // A larger threshold fights the user when they scroll up to read old messages.
+    const wasAtBottom = area.scrollHeight - area.scrollTop - area.clientHeight < 60;
 
     const msgDate = (msg.created_at || '').substring(0, 10);
     const lastDiv = area.querySelector('.date-divider:last-of-type');
@@ -91,7 +112,9 @@ const Chat = {
       area.insertAdjacentHTML('beforeend', this.dateDivider(msg.created_at));
     }
     area.insertAdjacentHTML('beforeend', this.renderMsg(msg));
-    this.autoScroll();
+
+    if (wasAtBottom) this.scrollBottom();
+    this.updateScrollBtn();
   },
 
   renderMsg(msg) {
@@ -164,14 +187,18 @@ const Chat = {
     return `<div class="date-divider" data-date="${date}"><span>${label}</span></div>`;
   },
 
-  autoScroll() {
+  // Only updates the scroll-down button visibility. Never forces scroll position.
+  // Called on the scroll event so the button appears/disappears as user scrolls.
+  updateScrollBtn() {
     const area = document.getElementById('chat-messages');
     if (!area) return;
-    const atBottom = area.scrollHeight - area.scrollTop - area.clientHeight < 150;
-    if (atBottom) this.scrollBottom();
+    const atBottom = area.scrollHeight - area.scrollTop - area.clientHeight < 60;
     const btn = document.getElementById('scroll-down-btn');
     if (btn) btn.classList.toggle('show', !atBottom);
   },
+
+  // Legacy alias kept so any other calls still work
+  autoScroll() { this.updateScrollBtn(); },
 
   scrollBottom() {
     const area = document.getElementById('chat-messages');
@@ -209,7 +236,7 @@ const Chat = {
       input.style.height = Math.min(input.scrollHeight, 100) + 'px';
     });
     document.getElementById('scroll-down-btn')?.addEventListener('click', () => this.scrollBottom());
-    document.getElementById('chat-messages')?.addEventListener('scroll', () => this.autoScroll());
+    document.getElementById('chat-messages')?.addEventListener('scroll', () => this.updateScrollBtn());
     document.getElementById('chat-attach')?.addEventListener('click', () => document.getElementById('file-input')?.click());
     document.getElementById('chat-image')?.addEventListener('click', () => document.getElementById('image-input')?.click());
     document.getElementById('file-input')?.addEventListener('change', e => { const f = e.target.files[0]; if (f) this.sendFile(f); });
@@ -301,7 +328,7 @@ const Chat = {
         body: JSON.stringify({ body, type: 'text', reply_to_id: this.replyTo || null })
       });
       this.clearReply();
-      // Show own message immediately without waiting for the next poll
+      // Immediately show own message without waiting for SSE
       if (resp && resp.message) {
         this.appendMsg(resp.message);
         this.lastId = resp.message.id;

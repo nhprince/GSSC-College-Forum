@@ -33,7 +33,7 @@ require_once 'includes/layout.php';
 <div class="a-card">
   <div class="a-card-title">
     All members (<?= count($members) ?>)
-    <a href="?action=invite" class="btn-primary" id="invite-btn"> Send invite</a>
+    <button class="btn-primary" id="invite-btn" onclick="openInviteModal()"> Send invite</button>
   </div>
 
   <!-- Filters -->
@@ -129,6 +129,88 @@ async function changeRole(id, role) {
     showToast('Role updated','success');
     setTimeout(()=>location.reload(),600);
   } catch(e) { showToast(e.message,'error'); }
+}
+</script>
+
+<!-- Invite Modal -->
+<div id="invite-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:200;align-items:center;justify-content:center;padding:20px">
+  <div style="background:var(--surface);border-radius:var(--r-lg);padding:28px;width:100%;max-width:440px;box-shadow:0 8px 32px rgba(0,0,0,.15)">
+    <h3 style="font-family:var(--fh);font-size:17px;font-weight:600;margin-bottom:6px">Send invite</h3>
+    <p style="font-size:13px;color:var(--txt-3);margin-bottom:18px">Enter an email to send a targeted invite, or leave blank to generate an open invite link anyone can use.</p>
+
+    <div class="a-form-group">
+      <label class="a-label">Email address (optional)</label>
+      <input class="a-input" type="email" id="invite-email" placeholder="student@email.com">
+    </div>
+
+    <div id="invite-error" style="display:none;background:#FFF0F0;color:var(--red);font-size:13px;font-weight:500;padding:10px 14px;border-radius:10px;margin-bottom:14px"></div>
+
+    <!-- Result box (shown after success) -->
+    <div id="invite-result" style="display:none;background:#F0FDF4;border:1.5px solid #86EFAC;border-radius:var(--r-md);padding:14px;margin-bottom:14px">
+      <div style="font-size:12px;font-weight:600;color:#15803d;margin-bottom:6px">Invite link ready — copy and share:</div>
+      <div style="display:flex;gap:6px;align-items:center">
+        <input id="invite-link-input" type="text" readonly style="flex:1;padding:8px 12px;background:var(--bg);border:1.5px solid #86EFAC;border-radius:var(--r-pill);font-size:12px;color:var(--txt);font-family:monospace;outline:none">
+        <button onclick="copyInviteLink()" class="btn-sm btn-green">Copy</button>
+      </div>
+      <div style="font-size:11px;color:var(--txt-3);margin-top:6px">Expires in 48 hours</div>
+    </div>
+
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn-sm btn-ghost" onclick="closeInviteModal()">Cancel</button>
+      <button class="btn-sm btn-red" id="invite-submit-btn" onclick="sendInvite()">Generate link</button>
+    </div>
+  </div>
+</div>
+
+<script>
+function openInviteModal() {
+  document.getElementById('invite-email').value = '';
+  document.getElementById('invite-error').style.display = 'none';
+  document.getElementById('invite-result').style.display = 'none';
+  document.getElementById('invite-submit-btn').style.display = '';
+  document.getElementById('invite-modal').style.display = 'flex';
+  setTimeout(() => document.getElementById('invite-email').focus(), 50);
+}
+function closeInviteModal() {
+  document.getElementById('invite-modal').style.display = 'none';
+}
+document.getElementById('invite-modal').addEventListener('click', e => {
+  if (e.target === document.getElementById('invite-modal')) closeInviteModal();
+});
+document.getElementById('invite-email').addEventListener('keydown', e => {
+  if (e.key === 'Enter') sendInvite();
+});
+
+async function sendInvite() {
+  const email = document.getElementById('invite-email').value.trim();
+  const errEl = document.getElementById('invite-error');
+  const btn   = document.getElementById('invite-submit-btn');
+  errEl.style.display = 'none';
+  btn.disabled = true; btn.textContent = 'Generating...';
+  try {
+    const data = await api('admin/invites.php', {
+      method: 'POST',
+      body: JSON.stringify({ email: email || '' })
+    });
+    document.getElementById('invite-link-input').value = data.invite_link;
+    document.getElementById('invite-result').style.display = 'block';
+    btn.style.display = 'none';
+    showToast(data.message || 'Invite created!', 'success');
+  } catch(e) {
+    errEl.textContent = e.message || 'Failed to create invite.';
+    errEl.style.display = 'block';
+  } finally {
+    btn.disabled = false; btn.textContent = 'Generate link';
+  }
+}
+
+function copyInviteLink() {
+  const input = document.getElementById('invite-link-input');
+  input.select();
+  navigator.clipboard?.writeText(input.value).then(() => showToast('Copied!', 'success')).catch(() => {
+    document.execCommand('copy');
+    showToast('Copied!', 'success');
+  });
 }
 </script>
 

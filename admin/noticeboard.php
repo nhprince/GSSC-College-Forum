@@ -37,13 +37,17 @@ require_once 'includes/layout.php';
       $priClass  = ['urgent'=>'badge-red','info'=>'badge-blue','general'=>'badge-grey'][$p['priority']] ?? 'badge-grey';
     ?>
     <tr>
-      <td><?= $typeBadge ?> <?= $p['is_pinned'] ? '' : '' ?></td>
+      <td><?= $typeBadge ?> <?= $p['is_pinned'] ? '<span style="font-size:11px">&#x1F4CC;</span>' : '' ?></td>
       <td style="font-weight:600;max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"><?= escHtml($p['title']) ?></td>
       <td><span class="badge <?= $priClass ?>"><?= $p['priority'] ?></span></td>
       <td style="font-size:12px;color:var(--txt-3)"><?= $p['read_count'] ?>/<?= $p['total_members'] ?></td>
       <td style="font-size:12px;color:var(--txt-3);white-space:nowrap"><?= timeAgo($p['created_at']) ?></td>
       <td>
-        <div style="display:flex;gap:4px">
+        <div style="display:flex;gap:4px;flex-wrap:wrap">
+          <?php if ($p['post_type'] === 'poll'): ?>
+          <button class="btn-sm btn-ghost" onclick="viewPollResults(<?= $p['id'] ?>)">&#x1F4CA; Results</button>
+          <button class="btn-sm btn-ghost" id="poll-toggle-<?= $p['id'] ?>" onclick="togglePoll(<?= $p['id'] ?>)">&#x1F512; Close poll</button>
+          <?php endif; ?>
           <button class="btn-sm btn-ghost" onclick="togglePin(<?= $p['id'] ?>, <?= $p['is_pinned'] ? 'false' : 'true' ?>)">
             <?= $p['is_pinned'] ? 'Unpin' : 'Pin' ?>
           </button>
@@ -214,6 +218,90 @@ document.getElementById('cp-submit-btn').addEventListener('click', async () => {
     else showToast(data.error,'error');
   } catch(e) { showToast('Failed to post','error'); }
 });
+
+async function viewPollResults(postId) {
+  try {
+    // Pass post_id - the API will look up the poll by post
+    const r = await fetch(`/api/polls/results.php?post_id=${postId}`, {credentials:'same-origin',headers:{'X-CSRF-Token':CSRF}});
+    const data = await r.json();
+    if (!data.success) { showToast(data.error || 'Failed to load','error'); return; }
+    showPollModal(data.data);
+  } catch(e) { showToast('Failed to load poll results','error'); }
+}
+
+async function togglePoll(postId) {
+  try {
+    // First get the poll id from results endpoint
+    const r = await fetch(`/api/polls/results.php?post_id=${postId}`, {credentials:'same-origin',headers:{'X-CSRF-Token':CSRF}});
+    const data = await r.json();
+    if (!data.success) { showToast('Could not find poll','error'); return; }
+    const pollId = data.data.poll.id;
+
+    const res = await api('polls/toggle.php', {method:'POST', body: JSON.stringify({poll_id: pollId})});
+    const label = res.is_closed ? '&#x1F513; Reopen poll' : '&#x1F512; Close poll';
+    const btn = document.getElementById(`poll-toggle-${postId}`);
+    if (btn) btn.innerHTML = label;
+    showToast(res.is_closed ? 'Poll closed' : 'Poll reopened', 'success');
+  } catch(e) { showToast(e.message || 'Failed', 'error'); }
+}
+
+function showPollModal(d) {
+  document.getElementById('poll-modal')?.remove();
+  const total  = d.poll.total_votes;
+  const isAnon = d.poll.is_anonymous;
+
+  const optionsHtml = d.options.map(o => {
+    const pct = total ? Math.round((o.votes / total) * 100) : 0;
+    const voterList = isAnon
+      ? `<p style="font-size:11px;color:var(--txt-3);padding:2px 0 8px">Anonymous poll - voters hidden</p>`
+      : o.voters.length
+        ? `<div style="display:flex;flex-wrap:wrap;gap:6px;padding:4px 0 8px">${
+            o.voters.map(v => `
+              <div style="display:flex;align-items:center;gap:6px;background:var(--bg);border-radius:var(--r-pill);padding:4px 10px 4px 6px;font-size:12px">
+                <div style="width:22px;height:22px;border-radius:50%;background:var(--red);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#fff;overflow:hidden;flex-shrink:0">
+                  ${v.avatar ? `<img src="/uploads/avatars/${v.avatar}" style="width:100%;height:100%;object-fit:cover">` : v.name[0].toUpperCase()}
+                </div>
+                <span style="font-weight:500">${v.name}</span>
+                <span style="color:var(--txt-3)">(${v.roll_no})</span>
+              </div>`).join('')
+          }</div>`
+        : `<p style="font-size:11px;color:var(--txt-3);padding:2px 0 8px">No votes yet</p>`;
+
+    return `<div style="margin-bottom:16px;padding-bottom:16px;border-bottom:1px solid var(--border)">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;gap:8px">
+        <span style="font-size:14px;font-weight:600;color:var(--txt)">${o.text}</span>
+        <span style="font-size:13px;font-weight:700;color:var(--red);white-space:nowrap">${pct}% <span style="color:var(--txt-3);font-weight:400">(${o.votes})</span></span>
+      </div>
+      <div style="height:8px;background:var(--bg);border-radius:var(--r-pill);overflow:hidden;margin-bottom:8px">
+        <div style="height:100%;width:${pct}%;background:var(--red);border-radius:var(--r-pill);transition:width .4s"></div>
+      </div>
+      ${voterList}
+    </div>`;
+  }).join('');
+
+  const modal = document.createElement('div');
+  modal.id = 'poll-modal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:300;display:flex;align-items:flex-start;justify-content:center;overflow-y:auto;padding:20px';
+  modal.innerHTML = `<div style="background:var(--surface);border-radius:18px;padding:24px;width:100%;max-width:560px;margin:0 auto">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:18px;gap:12px">
+      <div>
+        <div style="font-family:var(--fh);font-size:17px;font-weight:600">${d.poll.title}</div>
+        <div style="font-size:12px;color:var(--txt-3);margin-top:3px">
+          ${total} vote${total !== 1 ? 's' : ''} &middot;
+          ${d.poll.is_closed ? '<span style="color:var(--red)">Closed</span>' : '<span style="color:#16a34a">Open</span>'}
+          ${isAnon ? ' &middot; Anonymous' : ''}
+        </div>
+      </div>
+      <button onclick="document.getElementById('poll-modal').remove()" style="font-size:22px;color:var(--txt-3);flex-shrink:0;line-height:1;padding:0">&times;</button>
+    </div>
+    ${optionsHtml}
+    <div style="display:flex;justify-content:flex-end;margin-top:4px">
+      <button class="btn-sm btn-ghost" onclick="document.getElementById('poll-modal').remove()">Close</button>
+    </div>
+  </div>`;
+  modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
+  document.body.appendChild(modal);
+}
 
 async function togglePin(id, pin) {
   try {

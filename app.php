@@ -263,12 +263,12 @@ $sound = (bool)($user['sound_enabled'] ?? true);
           <!-- Gender banners (skeleton) -->
           <div class="members-col-header">
             <div class="gender-banner">
-              <div class="gender-icon"></div>
+              <div class="gender-icon">&#x1F466;</div>
               <div class="gender-label">Male Students</div>
               <div class="gender-count" id="male-count"> members</div>
             </div>
             <div class="gender-banner">
-              <div class="gender-icon"></div>
+              <div class="gender-icon">&#x1F467;</div>
               <div class="gender-label">Female Students</div>
               <div class="gender-count" id="female-count"> members</div>
             </div>
@@ -334,6 +334,125 @@ $sound = (bool)($user['sound_enabled'] ?? true);
   </div>
 </nav>
 
+<!--  CREATE POST MODAL (moderators only)  -->
+<?php if (hasRole('moderator')): ?>
+<div class="modal-backdrop" id="create-post-backdrop">
+  <div class="settings-modal" id="create-post-modal" style="max-width:480px;padding:20px 20px 32px">
+    <div class="modal-handle"></div>
+    <div style="font-family:var(--fh);font-size:16px;font-weight:600;color:var(--txt);margin-bottom:16px">New post</div>
+
+    <!-- Type tabs -->
+    <div style="display:flex;gap:6px;margin-bottom:16px">
+      <button class="cp-type-btn active" data-type="announcement" style="flex:1;padding:8px 4px;border-radius:var(--r-pill);font-size:12px;font-weight:600;background:var(--red);color:#fff;border:none;cursor:pointer;transition:all .15s"> Notice</button>
+      <button class="cp-type-btn" data-type="event" style="flex:1;padding:8px 4px;border-radius:var(--r-pill);font-size:12px;font-weight:600;background:var(--bg);color:var(--txt-2);border:1.5px solid var(--border);cursor:pointer;transition:all .15s"> Event</button>
+      <button class="cp-type-btn" data-type="poll" style="flex:1;padding:8px 4px;border-radius:var(--r-pill);font-size:12px;font-weight:600;background:var(--bg);color:var(--txt-2);border:1.5px solid var(--border);cursor:pointer;transition:all .15s"> Poll</button>
+    </div>
+    <input type="hidden" id="cp-type" value="announcement">
+
+    <!-- Title -->
+    <div style="margin-bottom:12px">
+      <label style="display:block;font-size:11px;font-weight:600;color:var(--txt-2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Title *</label>
+      <input id="cp-title" type="text" placeholder="Post title" style="width:100%;padding:10px 14px;background:var(--bg);border:1.5px solid var(--border);border-radius:var(--r-pill);font-size:14px;color:var(--txt);font-family:var(--fb);outline:none;transition:border-color .15s">
+    </div>
+
+    <!-- Body -->
+    <div style="margin-bottom:12px">
+      <label style="display:block;font-size:11px;font-weight:600;color:var(--txt-2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Body (optional)</label>
+      <textarea id="cp-body" placeholder="Additional details..." rows="3" style="width:100%;padding:10px 14px;background:var(--bg);border:1.5px solid var(--border);border-radius:14px;font-size:14px;color:var(--txt);font-family:var(--fb);resize:vertical;outline:none;transition:border-color .15s"></textarea>
+    </div>
+
+    <!-- Priority + Pin row -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+      <div>
+        <label style="display:block;font-size:11px;font-weight:600;color:var(--txt-2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Priority</label>
+        <select id="cp-priority" style="width:100%;padding:10px 14px;background:var(--bg);border:1.5px solid var(--border);border-radius:var(--r-pill);font-size:13px;color:var(--txt);font-family:var(--fb);outline:none;appearance:none">
+          <option value="general">General</option>
+          <option value="info">Info</option>
+          <option value="urgent">Urgent</option>
+        </select>
+      </div>
+      <div style="display:flex;align-items:flex-end;padding-bottom:2px">
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--txt-2);cursor:pointer;user-select:none">
+          <input type="checkbox" id="cp-pin" style="width:15px;height:15px;accent-color:var(--red)"> Pin this post
+        </label>
+      </div>
+    </div>
+
+    <!-- Announcement: image upload -->
+    <div id="cp-image-wrap" style="margin-bottom:12px">
+      <label style="display:block;font-size:11px;font-weight:600;color:var(--txt-2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Image (optional)</label>
+      <input type="file" id="cp-image" accept="image/jpeg,image/png,image/webp" style="font-size:13px;color:var(--txt-2)">
+    </div>
+
+    <!-- Event fields -->
+    <div id="cp-event-wrap" style="display:none;margin-bottom:4px">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+        <div>
+          <label style="display:block;font-size:11px;font-weight:600;color:var(--txt-2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Date *</label>
+          <input class="cp-field" type="date" id="cp-event-date" style="width:100%;padding:10px 14px;background:var(--bg);border:1.5px solid var(--border);border-radius:var(--r-pill);font-size:13px;color:var(--txt);font-family:var(--fb);outline:none">
+        </div>
+        <div>
+          <label style="display:block;font-size:11px;font-weight:600;color:var(--txt-2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Time</label>
+          <input class="cp-field" type="time" id="cp-event-time" style="width:100%;padding:10px 14px;background:var(--bg);border:1.5px solid var(--border);border-radius:var(--r-pill);font-size:13px;color:var(--txt);font-family:var(--fb);outline:none">
+        </div>
+      </div>
+      <div style="margin-bottom:12px">
+        <label style="display:block;font-size:11px;font-weight:600;color:var(--txt-2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Event type</label>
+        <select id="cp-event-type" style="width:100%;padding:10px 14px;background:var(--bg);border:1.5px solid var(--border);border-radius:var(--r-pill);font-size:13px;color:var(--txt);font-family:var(--fb);outline:none;appearance:none">
+          <option value="exam">Exam</option>
+          <option value="submission">Submission</option>
+          <option value="holiday">Holiday</option>
+          <option value="class">Class</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Poll fields -->
+    <div id="cp-poll-wrap" style="display:none;margin-bottom:4px">
+      <div style="margin-bottom:12px">
+        <label style="display:block;font-size:11px;font-weight:600;color:var(--txt-2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Options (min 2)</label>
+        <div id="cp-poll-options">
+          <input type="text" class="cp-poll-opt" placeholder="Option 1" style="width:100%;padding:9px 14px;background:var(--bg);border:1.5px solid var(--border);border-radius:var(--r-pill);font-size:13px;color:var(--txt);font-family:var(--fb);outline:none;margin-bottom:6px">
+          <input type="text" class="cp-poll-opt" placeholder="Option 2" style="width:100%;padding:9px 14px;background:var(--bg);border:1.5px solid var(--border);border-radius:var(--r-pill);font-size:13px;color:var(--txt);font-family:var(--fb);outline:none;margin-bottom:6px">
+        </div>
+        <button type="button" id="cp-add-opt" style="font-size:12px;font-weight:600;color:var(--red);background:none;border:none;cursor:pointer;padding:4px 0">+ Add option</button>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:16px;align-items:center;margin-bottom:4px">
+        <label style="display:flex;align-items:center;gap:7px;font-size:13px;color:var(--txt-2);cursor:pointer;user-select:none">
+          <input type="checkbox" id="cp-poll-anon" style="width:15px;height:15px;accent-color:var(--red)"> Anonymous
+        </label>
+        <div style="display:flex;align-items:center;gap:8px">
+          <label style="font-size:11px;font-weight:600;color:var(--txt-2);text-transform:uppercase;letter-spacing:.06em;white-space:nowrap">Ends at</label>
+          <input type="datetime-local" id="cp-poll-ends" style="padding:6px 10px;background:var(--bg);border:1.5px solid var(--border);border-radius:var(--r-pill);font-size:12px;color:var(--txt);font-family:var(--fb);outline:none">
+        </div>
+      </div>
+    </div>
+
+    <!-- Error message -->
+    <div id="cp-error" style="display:none;background:var(--red-light);color:var(--red);font-size:13px;font-weight:500;padding:10px 14px;border-radius:10px;margin-bottom:12px"></div>
+
+    <!-- Actions -->
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
+      <button id="cp-cancel" style="padding:10px 20px;border-radius:var(--r-pill);font-size:13px;font-weight:600;background:var(--bg);color:var(--txt-2);border:1.5px solid var(--border);cursor:pointer">Cancel</button>
+      <button id="cp-submit" style="padding:10px 24px;border-radius:var(--r-pill);font-size:13px;font-weight:600;background:var(--red);color:#fff;border:none;cursor:pointer;transition:background .15s;display:flex;align-items:center;gap:8px">
+        <span id="cp-submit-text">Publish</span>
+        <span id="cp-spinner" style="display:none;width:14px;height:14px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite"></span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<style>
+  .cp-type-btn:focus { outline: none; }
+  #cp-title:focus, #cp-body:focus, .cp-poll-opt:focus, #cp-event-date:focus, #cp-event-time:focus, #cp-event-type:focus, #cp-priority:focus, #cp-poll-ends:focus {
+    border-color: var(--red) !important;
+    box-shadow: 0 0 0 3px rgba(192,0,12,0.08);
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+<?php endif; ?>
+
 <!--  SETTINGS MODAL  -->
 <div class="modal-backdrop" id="settings-backdrop">
   <div class="settings-modal" id="settings-modal">
@@ -344,47 +463,59 @@ $sound = (bool)($user['sound_enabled'] ?? true);
 
       <div class="settings-row" data-settings-view="notif-sound">
         <div class="sr-left">
-          <div class="sr-icon"></div>
+          <div class="sr-icon">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+          </div>
           Notification and sound
         </div>
-        <span class="sr-arrow"></span>
+        <span class="sr-arrow">›</span>
       </div>
 
       <div class="settings-row" data-settings-view="change-email">
         <div class="sr-left">
-          <div class="sr-icon"></div>
+          <div class="sr-icon">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,12 2,6"/></svg>
+          </div>
           Change email
         </div>
-        <span class="sr-arrow"></span>
+        <span class="sr-arrow">›</span>
       </div>
 
       <div class="settings-row" data-settings-view="forgot-password">
         <div class="sr-left">
-          <div class="sr-icon"></div>
+          <div class="sr-icon">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          </div>
           Password forgotten
         </div>
-        <span class="sr-arrow"></span>
+        <span class="sr-arrow">›</span>
       </div>
 
       <div class="settings-row" data-settings-view="about">
         <div class="sr-left">
-          <div class="sr-icon"></div>
+          <div class="sr-icon">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          </div>
           About us
         </div>
-        <span class="sr-arrow"></span>
+        <span class="sr-arrow">›</span>
       </div>
 
       <div class="settings-row" data-settings-view="rules">
         <div class="sr-left">
-          <div class="sr-icon"></div>
+          <div class="sr-icon">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+          </div>
           Rules and regulations
         </div>
-        <span class="sr-arrow"></span>
+        <span class="sr-arrow">›</span>
       </div>
 
       <div class="settings-row settings-row--danger" id="btn-delete-account">
         <div class="sr-left">
-          <div class="sr-icon"></div>
+          <div class="sr-icon">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3,6 5,6 21,6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+          </div>
           Delete account
         </div>
       </div>

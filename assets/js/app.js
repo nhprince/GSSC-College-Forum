@@ -62,10 +62,41 @@ document.getElementById('btn-search')?.addEventListener('click', () => {
 document.getElementById('search-cancel')?.addEventListener('click', () => {
   searchBar?.classList.remove('open');
   if (searchInput) searchInput.value = '';
+  // Clear any active chat filter
+  const area = document.getElementById('chat-messages');
+  if (area) area.querySelectorAll('.msg-row, .date-divider').forEach(el => el.style.display = '');
 });
 searchInput?.addEventListener('input', () => {
   const q = searchInput.value.trim();
   const active = document.querySelector('.page.active')?.id;
+  if (active === 'page-chat') {
+    // Client-side filter: show/hide messages containing the search term
+    const area = document.getElementById('chat-messages');
+    if (!area) return;
+    if (!q) {
+      // Clear search: show everything
+      area.querySelectorAll('.msg-row, .date-divider').forEach(el => el.style.display = '');
+      return;
+    }
+    const lower = q.toLowerCase();
+    // Hide/show individual message rows based on text content
+    area.querySelectorAll('.msg-row').forEach(row => {
+      const text = row.querySelector('.msg-bubble')?.textContent || '';
+      row.style.display = text.toLowerCase().includes(lower) ? '' : 'none';
+    });
+    // Hide date dividers that have no visible messages after them
+    area.querySelectorAll('.date-divider').forEach(divider => {
+      let next = divider.nextElementSibling;
+      let hasVisible = false;
+      while (next && !next.classList.contains('date-divider')) {
+        if (next.classList.contains('msg-row') && next.style.display !== 'none') {
+          hasVisible = true; break;
+        }
+        next = next.nextElementSibling;
+      }
+      divider.style.display = hasVisible ? '' : 'none';
+    });
+  }
   if (active === 'page-notices' && typeof Notices  !== 'undefined') Notices.search(q);
   if (active === 'page-storage' && typeof Storage_ !== 'undefined') Storage_.search(q);
   if (active === 'page-members' && typeof Members  !== 'undefined') Members.search(q);
@@ -171,23 +202,6 @@ async function refreshOnlineCount() {
 function escAttr(s) {
   return String(s || '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
-
-/* Page Visibility - restart poll and refresh data when tab becomes active */
-document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible') {
-    // Restart chat polling if it was paused/stopped
-    if (typeof Chat !== 'undefined' && Chat._initialized && !Chat.pollTimer) {
-      Chat.startPoll();
-    }
-    refreshBadges();
-    refreshOnlineCount();
-  } else {
-    // Pause polling while tab is hidden to save server resources
-    if (typeof Chat !== 'undefined' && Chat._initialized) {
-      Chat.stopPoll();
-    }
-  }
-});
 
 /* Init */
 document.addEventListener('DOMContentLoaded', () => {
