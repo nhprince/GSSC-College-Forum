@@ -41,7 +41,10 @@ const Chat = {
         this.lastId = data.last_id || 0;
         this.scrollBottom();
       }
-      this.connectSSE();
+      // Use polling as the primary real-time method on this server.
+      // SSE holds a PHP-FPM worker open for minutes and starves other requests.
+      // Polling fires short ~50ms requests and frees the worker immediately.
+      this.startPoll();
     } catch(e) {
       const area2 = document.getElementById('chat-messages');
       if (area2) area2.innerHTML = `<div class="empty-state">
@@ -59,29 +62,8 @@ const Chat = {
     if (dis) dis.style.display = 'block';
   },
 
-  connectSSE() {
-    if (this.pollTimer) { clearInterval(this.pollTimer); this.pollTimer = null; }
-    this.eventSource?.close();
-    if (!window.EventSource) { this.startPoll(); return; }
-
-    this.eventSource = new EventSource('/api/chat/stream.php?last_id=' + this.lastId);
-    this.eventSource.addEventListener('message', e => {
-      try {
-        const msg = JSON.parse(e.data);
-        this.appendMsg(msg);
-        this.lastId = msg.id;
-      } catch(_) {}
-    });
-    this.eventSource.addEventListener('reconnect', () => {
-      this.eventSource.close();
-      setTimeout(() => this.connectSSE(), 1500);
-    });
-    this.eventSource.onerror = () => {
-      this.eventSource.close();
-      this.startPoll();
-    };
-  },
-
+  // Polling: fires a short HTTP request every 3 seconds, completes instantly,
+  // frees the PHP worker. New messages appear within 3 seconds max.
   startPoll() {
     if (this.pollTimer) clearInterval(this.pollTimer);
     this.pollTimer = setInterval(async () => {
@@ -91,6 +73,10 @@ const Chat = {
         (d.messages || []).forEach(m => { this.appendMsg(m); this.lastId = m.id; });
       } catch(_) {}
     }, 3000);
+  },
+
+  stopPoll() {
+    if (this.pollTimer) { clearInterval(this.pollTimer); this.pollTimer = null; }
   },
 
   appendMsg(msg) {
@@ -315,7 +301,7 @@ const Chat = {
         body: JSON.stringify({ body, type: 'text', reply_to_id: this.replyTo || null })
       });
       this.clearReply();
-      // Immediately show own message without waiting for SSE
+      // Show own message immediately without waiting for the next poll
       if (resp && resp.message) {
         this.appendMsg(resp.message);
         this.lastId = resp.message.id;
