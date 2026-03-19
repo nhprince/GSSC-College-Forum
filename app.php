@@ -26,7 +26,8 @@ $sound = (bool)($user['sound_enabled'] ?? true);
   <link rel="stylesheet" href="/assets/css/main.css">
   <style>
     html,body{height:100%;margin:0;padding:0;background:#EFEFEF}
-    #app{display:grid;grid-template-columns:240px 1fr;height:100dvh;overflow:hidden}
+    #app{display:grid;grid-template-columns:1fr;height:100dvh;overflow:hidden}
+    @media(min-width:769px){#app{grid-template-columns:var(--sb-w,240px) 1fr}}
   </style>
 </head>
 <body>
