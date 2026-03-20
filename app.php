@@ -16,7 +16,8 @@ $sound = (bool)($user['sound_enabled'] ?? true);
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Crect%20width%3D%2232%22%20height%3D%2232%22%20rx%3D%227%22%20fill%3D%22%23C0000C%22%2F%3E%3Cpath%20d%3D%22M12%206h8M14%206v8l-4%209a2%202%200%200%200%201.8%203h8.4a2%202%200%200%200%201.8-3l-4-9V6%22%20stroke%3D%22white%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20fill%3D%22none%22%2F%3E%3Ccircle%20cx%3D%2219%22%20cy%3D%2219%22%20r%3D%221.2%22%20fill%3D%22white%22%2F%3E%3Ccircle%20cx%3D%2216%22%20cy%3D%2222%22%20r%3D%220.9%22%20fill%3D%22rgba%28255%2C255%2C255%2C0.6%29%22%2F%3E%3C%2Fsvg%3E">
   <meta name="csrf-token" content="<?= getCsrfToken() ?>">
   <meta name="theme-color" content="#C0000C">
   <title>GSSC-science official</title>
@@ -41,7 +42,7 @@ $sound = (bool)($user['sound_enabled'] ?? true);
   <aside class="sidebar">
 
     <!-- Profile -->
-    <div class="sb-profile">
+    <a href="/profile.php?id=<?= (int)$user['id'] ?>" class="sb-profile" style="text-decoration:none;cursor:pointer" title="View your profile">
       <div class="sb-avatar">
         <?php if ($user['avatar']): ?>
           <img src="/uploads/avatars/<?= htmlspecialchars($user['avatar'], ENT_QUOTES, 'UTF-8') ?>" alt="">
@@ -53,7 +54,7 @@ $sound = (bool)($user['sound_enabled'] ?? true);
         <div class="sb-name"><?= htmlspecialchars($user['full_name'], ENT_QUOTES, 'UTF-8') ?></div>
         <div class="sb-meta"><?= htmlspecialchars(($user['nickname'] ?: '') . ' (' . $user['roll_no'] . ')', ENT_QUOTES, 'UTF-8') ?></div>
       </div>
-    </div>
+    </a>
 
     <!-- Nav -->
     <div class="sb-section-label">Sections</div>
@@ -73,17 +74,6 @@ $sound = (bool)($user['sound_enabled'] ?? true);
       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
       Storage
     </button>
-
-    <!-- Online members strip -->
-    <div class="sb-online">
-      <div class="sb-online-label">Online now</div>
-      <div class="online-strip" id="online-strip">
-        <!-- Skeleton placeholders -->
-        <?php for($i=0;$i<6;$i++): ?>
-        <div class="o-avatar skeleton" style="background:#a00010;border-color:transparent"></div>
-        <?php endfor; ?>
-      </div>
-    </div>
 
     <!-- Settings + Logout -->
     <div class="sb-footer">
@@ -260,15 +250,23 @@ $sound = (bool)($user['sound_enabled'] ?? true);
       <div class="section-content">
         <div class="members-grid" id="members-grid">
 
-          <!-- Gender banners (skeleton) -->
+          <!-- Online now strip -->
+          <div class="members-col-header" id="online-now-section" style="display:none">
+            <div style="grid-column:1/-1;background:var(--surface);border-radius:var(--r-lg);padding:14px 16px;box-shadow:var(--sh-sm)">
+              <div style="font-size:11px;font-weight:600;color:var(--txt-3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:10px;display:flex;align-items:center;gap:6px">
+                <span class="online-dot"></span> Online now
+              </div>
+              <div id="online-members-strip" style="display:flex;flex-wrap:wrap;gap:8px"></div>
+            </div>
+          </div>
           <div class="members-col-header">
             <div class="gender-banner">
-              <div class="gender-icon">&#x1F466;</div>
+              <div class="gender-icon"><img src="https://cdn-icons-png.flaticon.com/512/13716/13716710.png" width="38" height="38" alt="Male" style="filter:brightness(0) invert(1);display:block"></div>
               <div class="gender-label">Male Students</div>
               <div class="gender-count" id="male-count"> members</div>
             </div>
             <div class="gender-banner">
-              <div class="gender-icon">&#x1F467;</div>
+              <div class="gender-icon"><img src="https://cdn-icons-png.flaticon.com/512/50/50581.png" width="38" height="38" alt="Female" style="filter:brightness(0) invert(1);display:block"></div>
               <div class="gender-label">Female Students</div>
               <div class="gender-count" id="female-count"> members</div>
             </div>
@@ -535,7 +533,7 @@ $sound = (bool)($user['sound_enabled'] ?? true);
     <!-- Notification & Sound sub-view -->
     <div class="settings-view" id="sv-notif-sound">
       <div class="sv-header">
-        <button class="sv-back"></button>
+        <button class="sv-back"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15,18 9,12 15,6"/></svg></button>
         <div class="sv-title">Notification and sound</div>
       </div>
       <div class="toggle-row">
@@ -557,7 +555,7 @@ $sound = (bool)($user['sound_enabled'] ?? true);
     <!-- Change email sub-view -->
     <div class="settings-view" id="sv-change-email">
       <div class="sv-header">
-        <button class="sv-back"></button>
+        <button class="sv-back"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15,18 9,12 15,6"/></svg></button>
         <div class="sv-title">Change email</div>
       </div>
       <p style="font-size:13px;color:var(--txt-2);margin-bottom:16px">
@@ -574,7 +572,7 @@ $sound = (bool)($user['sound_enabled'] ?? true);
     <!-- Forgot password sub-view -->
     <div class="settings-view" id="sv-forgot-password">
       <div class="sv-header">
-        <button class="sv-back"></button>
+        <button class="sv-back"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15,18 9,12 15,6"/></svg></button>
         <div class="sv-title">Reset password</div>
       </div>
       <p style="font-size:13px;color:var(--txt-2);margin-bottom:16px">
@@ -586,18 +584,72 @@ $sound = (bool)($user['sound_enabled'] ?? true);
     <!-- About us sub-view -->
     <div class="settings-view" id="sv-about">
       <div class="sv-header">
-        <button class="sv-back"></button>
-        <div class="sv-title">About us</div>
+        <button class="sv-back"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15,18 9,12 15,6"/></svg></button>
+        <div class="sv-title">About</div>
       </div>
-      <p style="font-size:14px;color:var(--txt-2);line-height:1.7">
-        <?= nl2br(htmlspecialchars(getSetting('about_us', 'The official platform for the Science Department of Govt. Shaheed Suhrawardy College (GSSC).'), ENT_QUOTES, 'UTF-8')) ?>
+
+      <!-- App info -->
+      <div style="text-align:center;padding:8px 0 20px">
+        <div style="width:56px;height:56px;border-radius:16px;background:var(--red);margin:0 auto 12px;display:flex;align-items:center;justify-content:center">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h6m-4 0v6l-3 7a1.5 1.5 0 0 0 1.4 2h5.2a1.5 1.5 0 0 0 1.4-2l-3-7V3"/><circle cx="14.5" cy="15" r="1" fill="white" stroke="none"/></svg>
+        </div>
+        <div style="font-family:var(--fh);font-size:16px;font-weight:700;color:var(--txt)">GSSC Science Official</div>
+        <div style="font-size:12px;color:var(--txt-3);margin-top:3px">Class XI Science · Govt. Shaheed Suhrawardy College</div>
+      </div>
+
+      <p style="font-size:13.5px;color:var(--txt-2);line-height:1.7;margin-bottom:20px">
+        <?= nl2br(htmlspecialchars(getSetting('about_us', 'The official communication platform for the Science Department of Govt. Shaheed Suhrawardy College (GSSC), Dhaka.'), ENT_QUOTES, 'UTF-8')) ?>
       </p>
+
+      <!-- Divider -->
+      <div style="height:1px;background:var(--border);margin:4px 0 20px"></div>
+
+      <!-- Credits -->
+      <div style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--txt-3);margin-bottom:12px">Built by</div>
+
+      <!-- Developer card — NH Prince -->
+      <div style="background:var(--dark-row);border-radius:var(--r-lg);padding:16px;margin-bottom:10px;display:flex;align-items:center;gap:14px">
+        <div style="width:46px;height:46px;border-radius:50%;background:var(--red);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-family:var(--fh);font-size:15px;font-weight:700;color:#fff;border:2px solid rgba(255,255,255,.18)">N</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-family:var(--fh);font-size:14px;font-weight:700;color:#fff">NH Prince Pradhan</div>
+          <div style="font-size:11px;color:rgba(255,255,255,.55);margin-top:2px">Developer &amp; Designer · Roll 1116 · Class XI</div>
+          <div style="font-size:11px;color:rgba(255,255,255,.4);margin-top:1px">Full-Stack Developer · Narayanganj, Dhaka</div>
+        </div>
+        <a href="https://nhprince.dpdns.org" target="_blank" style="width:32px;height:32px;border-radius:50%;background:rgba(255,255,255,.1);display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background .15s" title="Portfolio">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.7)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15,3 21,3 21,9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+        </a>
+      </div>
+
+      <!-- Contributor card — MD Bijoy -->
+      <div style="background:var(--dark-row);border-radius:var(--r-lg);padding:16px;margin-bottom:20px;display:flex;align-items:center;gap:14px">
+        <div style="width:46px;height:46px;border-radius:50%;background:#1B6FD8;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-family:var(--fh);font-size:15px;font-weight:700;color:#fff;border:2px solid rgba(255,255,255,.18)">B</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-family:var(--fh);font-size:14px;font-weight:700;color:#fff">MD Bijoy A</div>
+          <div style="font-size:11px;color:rgba(255,255,255,.55);margin-top:2px">Contributor · Idea &amp; Enhancements</div>
+          <div style="font-size:11px;color:rgba(255,255,255,.4);margin-top:1px">Suggested key features &amp; improvements</div>
+        </div>
+        <div style="width:32px;height:32px;border-radius:50%;background:rgba(255,255,255,.1);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.5)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+        </div>
+      </div>
+
+      <!-- Tech stack -->
+      <div style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--txt-3);margin-bottom:10px">Tech stack</div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:20px">
+        <?php foreach(['PHP','MySQL','JavaScript','HTML/CSS'] as $t): ?>
+        <span style="background:var(--dark-row);color:rgba(255,255,255,.65);font-size:11px;font-weight:600;padding:4px 10px;border-radius:var(--r-pill)"><?= $t ?></span>
+        <?php endforeach; ?>
+      </div>
+
+      <div style="text-align:center;font-size:11px;color:var(--txt-3)">
+        &copy; <?= date('Y') ?> GSSC Science Official &middot; Class XI
+      </div>
     </div>
 
     <!-- Rules sub-view -->
     <div class="settings-view" id="sv-rules">
       <div class="sv-header">
-        <button class="sv-back"></button>
+        <button class="sv-back"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15,18 9,12 15,6"/></svg></button>
         <div class="sv-title">Rules and regulations</div>
       </div>
       <p style="font-size:14px;color:var(--txt-2);line-height:1.7">
@@ -645,7 +697,7 @@ $sound = (bool)($user['sound_enabled'] ?? true);
 <script src="/assets/js/members.js"></script>
 
 <script>
-// Pass server-side data to JS
+// Server-side user data for JS modules
 const CURRENT_USER = {
   id:       <?= (int)$user['id'] ?>,
   name:     <?= json_encode($user['full_name']) ?>,
@@ -654,22 +706,7 @@ const CURRENT_USER = {
   avatar:   <?= json_encode($user['avatar']) ?>,
   role:     <?= json_encode($user['role']) ?>,
 };
-
-// Logout
-async function doLogout() {
-  if (!confirm('Are you sure you want to log out?')) return;
-  try {
-    await fetch('/api/auth/logout.php', {
-      method: 'POST',
-      headers: { 'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content },
-      credentials: 'same-origin'
-    });
-  } catch(_) {}
-  window.location.href = '/login.php';
-}
-
-document.getElementById('btn-logout')?.addEventListener('click', doLogout);
-document.getElementById('btn-logout-modal')?.addEventListener('click', doLogout);
+// doLogout is defined in app.js (dialog system included there)
 </script>
 
 </body>

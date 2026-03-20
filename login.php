@@ -57,7 +57,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Crect%20width%3D%2232%22%20height%3D%2232%22%20rx%3D%227%22%20fill%3D%22%23C0000C%22%2F%3E%3Cpath%20d%3D%22M12%206h8M14%206v8l-4%209a2%202%200%200%200%201.8%203h8.4a2%202%200%200%200%201.8-3l-4-9V6%22%20stroke%3D%22white%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20fill%3D%22none%22%2F%3E%3Ccircle%20cx%3D%2219%22%20cy%3D%2219%22%20r%3D%221.2%22%20fill%3D%22white%22%2F%3E%3Ccircle%20cx%3D%2216%22%20cy%3D%2222%22%20r%3D%220.9%22%20fill%3D%22rgba%28255%2C255%2C255%2C0.6%29%22%2F%3E%3C%2Fsvg%3E">
   <meta name="theme-color" content="#C0000C">
   <title>Login  GSSC Science Official</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -237,10 +238,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     /* Responsive */
-    @media(max-width: 440px) {
-      .card-header { padding: 22px 20px 20px; }
-      .card-body { padding: 22px 20px; }
-      .card-footer { padding: 0 20px 20px; }
+    @media(max-width: 480px) {
+      body { padding: 0; align-items: flex-end; background: var(--red); }
+      .card {
+        max-width: 100%;
+        border-radius: var(--r-lg) var(--r-lg) 0 0;
+        min-height: 70dvh;
+      }
+      /* decorative circles hidden on small screens */
+      body::before, body::after { display: none; }
+      .card-header { padding: 28px 24px 22px; }
+      .card-body   { padding: 24px 24px; }
+      .card-footer { padding: 0 24px 32px; }
+      .btn-login   { padding: 15px; font-size: 16px; }
+      .input-wrap input { font-size: 16px; } /* prevent iOS zoom */
     }
   </style>
 </head>
@@ -264,6 +275,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   <!-- Form -->
   <div class="card-body">
     <div class="error-msg" id="error-msg"></div>
+
+    <?php if (!empty($_GET['registered'])): ?>
+    <div class="error-msg show" style="background:#EFF6FF;color:#1e40af;border:1px solid #BFDBFE">
+      ✅ Account submitted! An admin will review and approve your account shortly. You'll be able to log in once approved.
+    </div>
+    <?php endif; ?>
 
     <div class="form-group">
       <label class="form-label" for="email">Email address</label>
@@ -295,7 +312,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   </div>
 
   <div class="card-footer">
-    Don't have an account? <a href="/register.php">Register with invite</a>
+    Don't have an account?
+    <?php
+      $regMode = getSetting('registration_mode', 'invite');
+      if ($regMode === 'open'): ?>
+      <a href="/register.php">Create an account</a>
+    <?php elseif ($regMode === 'invite'): ?>
+      <a href="/register.php">Register with invite</a>
+    <?php else: ?>
+      <span style="color:var(--txt-3)">Registration is currently closed</span>
+    <?php endif; ?>
   </div>
 </div>
 

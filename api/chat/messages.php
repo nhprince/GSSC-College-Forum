@@ -43,10 +43,15 @@ if ($method === 'GET') {
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
         if (!$sinceId) $rows = array_reverse($rows);
 
-        // Reactions in PHP (avoids JSON_OBJECTAGG version issues)
-        $reactions = [];
+        $reactions   = [];
+        $myReactions = [];
+        $quotedMap   = [];   // reply_to_id → quoted message data
+
         if (!empty($rows)) {
-            $ids   = implode(',', array_map(fn($r) => (int)$r['id'], $rows));
+            $currentUserId = (int)currentUser()['id'];
+            $ids = implode(',', array_map(fn($r) => (int)$r['id'], $rows));
+
+            // Reaction counts
             $rStmt = $pdo->query("
                 SELECT message_id, emoji, COUNT(*) AS cnt
                 FROM message_reactions WHERE message_id IN ({$ids})
@@ -55,10 +60,47 @@ if ($method === 'GET') {
             foreach ($rStmt->fetchAll(PDO::FETCH_ASSOC) as $r) {
                 $reactions[(int)$r['message_id']][$r['emoji']] = (int)$r['cnt'];
             }
+
+            // Own reactions
+            $mStmt = $pdo->prepare("
+                SELECT message_id, emoji FROM message_reactions WHERE message_id IN ({$ids}) AND user_id = ?
+            ");
+            $mStmt->execute([$currentUserId]);
+            foreach ($mStmt->fetchAll(PDO::FETCH_ASSOC) as $r) {
+                $myReactions[(int)$r['message_id']][] = $r['emoji'];
+            }
+
+            // Fetch quoted messages for any rows that have reply_to_id
+            $replyIds = array_filter(array_unique(array_column($rows, 'reply_to_id')));
+            if (!empty($replyIds)) {
+                $riStr = implode(',', array_map('intval', $replyIds));
+                $qStmt = $pdo->query("
+                    SELECT m.id, m.body, m.type, m.file_name,
+                           u.nickname AS user_nickname, u.full_name AS user_full_name
+                    FROM messages m JOIN users u ON u.id = m.user_id
+                    WHERE m.id IN ({$riStr})
+                ");
+                foreach ($qStmt->fetchAll(PDO::FETCH_ASSOC) as $q) {
+                    $quotedMap[(int)$q['id']] = [
+                        'id'     => (int)$q['id'],
+                        'sender' => $q['user_nickname'] ?: $q['user_full_name'],
+                        'body'   => $q['body'] ?? '',
+                        'type'   => $q['type'] ?? 'text',
+                        'file_name' => $q['file_name'] ?? null,
+                    ];
+                }
+            }
         }
 
-        $messages = array_map(fn($r) => buildMsg($r, $reactions[(int)$r['id']] ?? []), $rows);
-        $lastId   = !empty($rows) ? (int)end($rows)['id'] : 0;
+        $messages = array_map(
+            fn($r) => buildMsg($r,
+                $reactions[(int)$r['id']]   ?? [],
+                $myReactions[(int)$r['id']] ?? [],
+                $r['reply_to_id'] ? ($quotedMap[(int)$r['reply_to_id']] ?? null) : null
+            ),
+            $rows
+        );
+        $lastId = !empty($rows) ? (int)end($rows)['id'] : 0;
 
         ob_clean();
         echo json_encode(['success' => true, 'data' => [
@@ -123,13 +165,35 @@ if ($method === 'GET') {
         }
 
         $msgId = (int)$pdo->lastInsertId();
-        $stmt  = $pdo->prepare("
+
+        // Fetch the new message with its quoted context
+        $stmt = $pdo->prepare("
             SELECT m.*, u.id AS user_id, u.full_name AS user_full_name,
                    u.nickname AS user_nickname, u.avatar AS user_avatar
             FROM messages m JOIN users u ON u.id = m.user_id WHERE m.id = ?
         ");
         $stmt->execute([$msgId]);
-        $msg = buildMsg($stmt->fetch(PDO::FETCH_ASSOC), []);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        $quoted = null;
+        if (!empty($row['reply_to_id'])) {
+            $qStmt = $pdo->prepare("
+                SELECT m.id, m.body, m.type, m.file_name,
+                       u.nickname AS user_nickname, u.full_name AS user_full_name
+                FROM messages m JOIN users u ON u.id = m.user_id WHERE m.id = ?
+            ");
+            $qStmt->execute([(int)$row['reply_to_id']]);
+            $q = $qStmt->fetch(PDO::FETCH_ASSOC);
+            if ($q) $quoted = [
+                'id'       => (int)$q['id'],
+                'sender'   => $q['user_nickname'] ?: $q['user_full_name'],
+                'body'     => $q['body'] ?? '',
+                'type'     => $q['type'] ?? 'text',
+                'file_name'=> $q['file_name'] ?? null,
+            ];
+        }
+
+        $msg = buildMsg($row, [], [], $quoted);
 
         ob_clean();
         http_response_code(201);
@@ -149,22 +213,24 @@ if ($method === 'GET') {
     echo json_encode(['success' => false, 'error' => 'Method not allowed.', 'code' => 'METHOD_NOT_ALLOWED']);
 }
 
-function buildMsg(array $r, array $rxn): array {
+function buildMsg(array $r, array $rxn, array $myRxn, ?array $quoted): array {
     return [
-        'id'          => (int)$r['id'],
-        'body'        => $r['body']        ?? null,
-        'type'        => $r['type']        ?? 'text',
-        'file_path'   => $r['file_path']   ?? null,
-        'file_name'   => $r['file_name']   ?? null,
-        'reply_to_id' => isset($r['reply_to_id']) && $r['reply_to_id'] ? (int)$r['reply_to_id'] : null,
-        'is_deleted'  => !empty($r['is_deleted']),
-        'created_at'  => $r['created_at']  ?? null,
+        'id'           => (int)$r['id'],
+        'body'         => $r['body']      ?? null,
+        'type'         => $r['type']      ?? 'text',
+        'file_path'    => $r['file_path'] ?? null,
+        'file_name'    => $r['file_name'] ?? null,
+        'reply_to_id'  => isset($r['reply_to_id']) && $r['reply_to_id'] ? (int)$r['reply_to_id'] : null,
+        'reply_quoted' => $quoted,   // ← full quoted message data
+        'is_deleted'   => !empty($r['is_deleted']),
+        'created_at'   => $r['created_at'] ?? null,
         'user' => [
             'id'        => (int)($r['user_id'] ?? 0),
             'full_name' => $r['user_full_name'] ?? '',
             'nickname'  => $r['user_nickname']  ?: ($r['user_full_name'] ?? ''),
             'avatar'    => $r['user_avatar']    ?? null,
         ],
-        'reactions' => empty($rxn) ? new \stdClass() : $rxn,
+        'reactions'    => empty($rxn)   ? new \stdClass() : $rxn,
+        'my_reactions' => $myRxn,
     ];
 }

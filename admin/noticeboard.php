@@ -29,7 +29,7 @@ require_once 'includes/layout.php';
     All posts (<?= count($posts) ?>)
     <button class="btn-primary" id="create-post-btn">+ New post</button>
   </div>
-  <table class="a-table">
+<div class="a-table-wrap">  <table class="a-table">
     <thead><tr><th>Type</th><th>Title</th><th>Priority</th><th>Read</th><th>Date</th><th>Actions</th></tr></thead>
     <tbody>
     <?php foreach ($posts as $p):
@@ -59,6 +59,7 @@ require_once 'includes/layout.php';
     <?php if (!$posts): ?><tr><td colspan="6" style="text-align:center;padding:24px;color:var(--txt-3)">No posts yet.</td></tr><?php endif; ?>
     </tbody>
   </table>
+</div>
 </div>
 
 <!-- Create Post Modal -->
@@ -312,7 +313,13 @@ async function togglePin(id, pin) {
 }
 
 async function deletePost(id) {
-  if (!confirm_('Delete this post?')) return;
+  const ok = await dialog.confirm({
+    type: 'danger',
+    title: 'Delete post?',
+    message: 'This post will be permanently deleted for everyone.',
+    confirmText: 'Delete', cancelText: 'Cancel'
+  });
+  if (!ok) return;
   try {
     await api('posts/delete.php',{method:'POST',body:JSON.stringify({post_id:id})});
     showToast('Post deleted','success');

@@ -66,16 +66,28 @@ const Members = {
   },
 
   updateOnlineStrip(onlineMembers) {
-    const strip = document.getElementById('online-strip');
-    if (!strip) return;
+    const section = document.getElementById('online-now-section');
+    const strip   = document.getElementById('online-members-strip');
+    if (!section || !strip) return;
+
     if (!onlineMembers.length) {
-      strip.innerHTML = '<span style="font-size:11px;color:rgba(255,255,255,.3)">None online</span>';
+      section.style.display = 'none';
       return;
     }
-    strip.innerHTML = onlineMembers.slice(0, 8).map(m => {
+
+    section.style.display = '';
+    strip.innerHTML = onlineMembers.map(m => {
       const init = (m.nickname || m.full_name || '?')[0].toUpperCase();
-      const img  = m.avatar ? `<img src="/uploads/avatars/${esc(m.avatar)}" alt="">` : init;
-      return `<div class="o-avatar" title="${esc(m.nickname || m.full_name)}" onclick="window.location='/profile.php?id=${m.id}'">${img}</div>`;
+      const img  = m.avatar
+        ? `<img src="/uploads/avatars/${esc(m.avatar)}" alt="" style="width:100%;height:100%;object-fit:cover">`
+        : `<span style="font-family:var(--fh);font-size:12px;font-weight:700">${init}</span>`;
+      return `<div onclick="window.location='/profile.php?id=${m.id}'"
+        title="${esc(m.nickname || m.full_name)}"
+        style="display:flex;align-items:center;gap:8px;background:var(--bg);border-radius:var(--r-pill);padding:5px 12px 5px 5px;cursor:pointer;transition:box-shadow .15s"
+        onmouseover="this.style.boxShadow='var(--sh-sm)'" onmouseout="this.style.boxShadow=''">
+        <div style="width:28px;height:28px;border-radius:50%;background:var(--red);border:2px solid var(--online);display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0">${img}</div>
+        <span style="font-size:12px;font-weight:600;color:var(--txt)">${esc(m.nickname || m.full_name)}</span>
+      </div>`;
     }).join('');
   },
 

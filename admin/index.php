@@ -72,7 +72,7 @@ require_once 'includes/layout.php';
 <!-- Activity log -->
 <div class="a-card">
   <div class="a-card-title">Recent activity</div>
-  <table class="a-table">
+<div class="a-table-wrap">  <table class="a-table">
     <thead><tr><th>User</th><th>Action</th><th>Time</th></tr></thead>
     <tbody>
     <?php foreach ($recentActivity as $log): ?>
@@ -85,6 +85,7 @@ require_once 'includes/layout.php';
     <?php if (!$recentActivity): ?><tr><td colspan="3" style="color:var(--txt-3);text-align:center;padding:20px">No activity yet.</td></tr><?php endif; ?>
     </tbody>
   </table>
+</div>
 </div>
 
 <!-- Send invite modal -->

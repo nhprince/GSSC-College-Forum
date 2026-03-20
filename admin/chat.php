@@ -49,7 +49,7 @@ require_once 'includes/layout.php';
     <button class="btn-sm btn-red" id="clear-all-btn"> Clear all</button>
     <?php endif; ?>
   </div>
-  <table class="a-table">
+<div class="a-table-wrap">  <table class="a-table">
     <thead><tr><th>User</th><th>Message</th><th>Type</th><th>Time</th><th></th></tr></thead>
     <tbody>
     <?php foreach ($messages as $m): ?>
@@ -66,6 +66,7 @@ require_once 'includes/layout.php';
     <?php if (!$messages): ?><tr><td colspan="5" style="text-align:center;padding:24px;color:var(--txt-3)">No messages yet.</td></tr><?php endif; ?>
     </tbody>
   </table>
+</div>
 </div>
 
 <script>

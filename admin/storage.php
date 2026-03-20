@@ -42,7 +42,7 @@ require_once 'includes/layout.php';
   <div class="a-card">
     <div class="a-card-title">Pending approval (<?= count($pending) ?>)</div>
     <?php if ($pending): ?>
-    <table class="a-table">
+<div class="a-table-wrap">    <table class="a-table">
       <thead><tr><th>File</th><th>Uploaded by</th><th>Size</th><th>Date</th><th>Actions</th></tr></thead>
       <tbody>
       <?php foreach ($pending as $f): ?>
@@ -65,6 +65,7 @@ require_once 'includes/layout.php';
       <?php endforeach; ?>
       </tbody>
     </table>
+</div>
     <?php else: ?>
     <p style="color:var(--txt-3);text-align:center;padding:24px">No files pending approval. </p>
     <?php endif; ?>
@@ -75,7 +76,7 @@ require_once 'includes/layout.php';
 <div id="tab-all" <?= $tab!=='all'?'style="display:none"':'' ?>>
   <div class="a-card">
     <div class="a-card-title">All files</div>
-    <table class="a-table">
+<div class="a-table-wrap">    <table class="a-table">
       <thead><tr><th>File</th><th>Category</th><th>Uploader</th><th>Downloads</th><th>Status</th><th>Actions</th></tr></thead>
       <tbody>
       <?php foreach ($allFiles as $f): ?>
@@ -99,6 +100,7 @@ require_once 'includes/layout.php';
       <?php if (!$allFiles): ?><tr><td colspan="6" style="text-align:center;padding:24px;color:var(--txt-3)">No files yet.</td></tr><?php endif; ?>
       </tbody>
     </table>
+</div>
   </div>
 </div>
 
@@ -108,8 +110,24 @@ function switchTab(t) {
   document.getElementById('tab-all').style.display     = t==='all'     ? '' : 'none';
 }
 async function fileAction(id, action) {
-  if (action === 'delete' && !confirm_('Delete this file permanently?')) return;
-  if (action === 'reject' && !confirm_('Reject and delete this file?')) return;
+  if (action === 'delete') {
+    const ok = await dialog.confirm({
+      type: 'danger',
+      title: 'Delete file?',
+      message: 'This file will be permanently deleted and cannot be recovered.',
+      confirmText: 'Delete', cancelText: 'Cancel'
+    });
+    if (!ok) return;
+  }
+  if (action === 'reject') {
+    const ok = await dialog.confirm({
+      type: 'danger',
+      title: 'Reject file?',
+      message: 'This file will be rejected and permanently removed.',
+      confirmText: 'Reject', cancelText: 'Cancel'
+    });
+    if (!ok) return;
+  }
   try {
     await api('storage/approve.php', { method:'POST', body:JSON.stringify({file_id:id, action}) });
     showToast(action === 'approve' ? 'File approved!' : 'File removed', 'success');

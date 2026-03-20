@@ -24,7 +24,7 @@ require_once 'includes/layout.php';
 
 <div class="a-card">
   <div class="a-card-title">Activity log (last 200 entries)</div>
-  <table class="a-table">
+<div class="a-table-wrap">  <table class="a-table">
     <thead><tr><th>User</th><th>Action</th><th>Target</th><th>IP</th><th>Time</th></tr></thead>
     <tbody>
     <?php foreach ($logs as $l):
@@ -42,6 +42,7 @@ require_once 'includes/layout.php';
     <?php if (!$logs): ?><tr><td colspan="5" style="text-align:center;padding:24px;color:var(--txt-3)">No activity yet.</td></tr><?php endif; ?>
     </tbody>
   </table>
+</div>
 </div>
 
 <?php require_once 'includes/layout_end.php'; ?>

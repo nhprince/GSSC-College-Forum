@@ -84,6 +84,11 @@ ul{list-style:none}
   padding:8px 8px 16px;
   border-bottom:1px solid rgba(255,255,255,0.12);
   margin-bottom:8px;
+  border-radius:var(--r-md);
+  transition:background .18s;
+}
+a.sb-profile:hover{
+  background:rgba(255,255,255,0.08);
 }
 .sb-avatar{
   width:44px;height:44px;border-radius:50%;
@@ -286,14 +291,28 @@ ul{list-style:none}
   display:flex;flex-direction:column;align-items:center;gap:3px;
   padding:6px 14px;border-radius:var(--r-md);
   font-size:10px;font-weight:600;color:var(--txt-3);
-  transition:color .15s;position:relative;
+  transition:color .2s;position:relative;
   min-width:64px;
+  /* button reset */
+  background:none;border:none;cursor:pointer;
+  font-family:var(--fb);
+  -webkit-tap-highlight-color:transparent;
 }
-.bnav-btn svg{transition:transform .15s}
+.bnav-btn svg{transition:transform .2s,color .2s}
 .bnav-btn.active{color:var(--red)}
-.bnav-btn.active svg{transform:scale(1.1)}
+.bnav-btn.active svg{transform:scale(1.12)}
+/* Active indicator — small red pill under the icon */
+.bnav-btn::after{
+  content:'';
+  display:block;
+  width:0;height:3px;
+  background:var(--red);border-radius:2px;
+  margin:0 auto;
+  transition:width .2s cubic-bezier(.4,0,.2,1);
+}
+.bnav-btn.active::after{width:20px}
 .bnav-dot{
-  position:absolute;top:4px;right:14px;
+  position:absolute;top:4px;right:12px;
   width:8px;height:8px;background:var(--red);
   border-radius:50%;border:2px solid var(--surface);
 }
@@ -353,12 +372,15 @@ ul{list-style:none}
   margin-bottom:20px;
 }
 .sv-back{
-  width:32px;height:32px;border-radius:50%;
+  width:34px;height:34px;border-radius:50%;
   background:var(--dark-row);color:#fff;
   display:flex;align-items:center;justify-content:center;
-  font-size:18px;flex-shrink:0;transition:background .15s;
+  flex-shrink:0;transition:background .15s,transform .12s;
+  border:none;cursor:pointer;
 }
-.sv-back:hover{background:var(--dark-row-h)}
+.sv-back svg{display:block}
+.sv-back:hover{background:var(--dark-row-h);transform:scale(1.08)}
+.sv-back:active{transform:scale(0.95)}
 .sv-title{font-family:var(--fh);font-size:16px;font-weight:600;color:var(--txt)}
 
 /* Toggle */
@@ -473,43 +495,117 @@ ul{list-style:none}
 }
 
 /* Message bubbles */
-.msg-group{display:flex;flex-direction:column;margin-bottom:2px}
-.msg-row{display:flex;align-items:flex-end;gap:8px;padding:1px 0}
-.msg-row.own{flex-direction:row-reverse}
-.msg-avatar-col{width:32px;flex-shrink:0}
-.msg-avatar{
-  width:30px;height:30px;border-radius:50%;
-  background:var(--red);
-  display:flex;align-items:center;justify-content:center;
-  font-family:var(--fh);font-size:10px;font-weight:700;color:#fff;
-  overflow:hidden;flex-shrink:0;
+/* ── Message rows & grouping ── */
+/* Base row */
+.msg-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  padding: 1px 0;
 }
-.msg-avatar img{width:100%;height:100%;object-fit:cover}
-.msg-avatar-spacer{width:30px;flex-shrink:0}
-.msg-content{display:flex;flex-direction:column;max-width:72%}
-.msg-row.own .msg-content{align-items:flex-end}
-.msg-sender{
-  font-size:11px;font-weight:600;color:var(--txt-2);
-  margin-bottom:3px;padding-left:2px;
+.msg-row.own { flex-direction: row-reverse; }
+
+/* Spacing: tight between grouped bubbles, gap before a new sender */
+.msg-row.msg-first { margin-top: 10px; }
+.msg-row.msg-last  { margin-bottom: 2px; }
+
+/* Avatar column — fixed width so bubbles align regardless of avatar visibility */
+.msg-avatar-col {
+  width: 32px;
+  flex-shrink: 0;
+  align-self: flex-end; /* avatar sits at the bottom of its group */
 }
-.msg-bubble{
-  background:var(--surface);
-  padding:9px 13px;
-  border-radius:18px 18px 18px 4px;
-  font-size:13.5px;line-height:1.5;color:var(--txt);
-  word-break:break-word;
-  box-shadow:var(--sh-sm);
+.msg-avatar {
+  width: 30px; height: 30px; border-radius: 50%;
+  background: var(--red);
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--fh); font-size: 10px; font-weight: 700; color: #fff;
+  overflow: hidden; flex-shrink: 0;
 }
-.msg-row.own .msg-bubble{
-  background:var(--red);color:#fff;
-  border-radius:18px 18px 4px 18px;
-  box-shadow:0 2px 8px rgba(192,0,12,.2);
+.msg-avatar img { width: 100%; height: 100%; object-fit: cover; }
+
+/* Content column */
+.msg-content {
+  display: flex;
+  flex-direction: column;
+  max-width: 72%;
 }
-.msg-time{
-  font-size:10px;color:var(--txt-3);margin-top:3px;
-  padding:0 2px;
+.msg-row.own .msg-content { align-items: flex-end; }
+
+/* Sender name — only on first bubble of a group */
+.msg-sender {
+  font-size: 11px; font-weight: 600; color: var(--txt-2);
+  margin-bottom: 3px; padding-left: 4px;
 }
-.msg-row.own .msg-time{text-align:right}
+
+/* ── Bubble shape — corners tell the story ──
+   Messenger rule:
+   • Single message in group: full pill (18px all corners)
+   • First of many:  top is full, bottom-inner corner is small (4px) — tail starts
+   • Middle:         both inner corners small (4px) — tight chain
+   • Last of many:   top-inner is small (4px), bottom full — tail ends
+   "inner" = the corner closest to the avatar (left for others, right for own)
+*/
+
+/* Others' bubbles (tail on left) */
+.msg-row:not(.own) .msg-bubble {
+  background: var(--surface);
+  color: var(--txt);
+  box-shadow: var(--sh-sm);
+}
+/* Single */
+.msg-row:not(.own).msg-first.msg-last .msg-bubble {
+  border-radius: 18px 18px 18px 18px;
+}
+/* First of group */
+.msg-row:not(.own).msg-first:not(.msg-last) .msg-bubble {
+  border-radius: 18px 18px 18px 4px;
+}
+/* Middle */
+.msg-row:not(.own).msg-mid:not(.msg-last) .msg-bubble {
+  border-radius: 4px 18px 18px 4px;
+}
+/* Last of group */
+.msg-row:not(.own).msg-last:not(.msg-first) .msg-bubble {
+  border-radius: 4px 18px 18px 18px;
+}
+
+/* Own bubbles (tail on right) */
+.msg-row.own .msg-bubble {
+  background: var(--red);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(192,0,12,.2);
+}
+/* Single */
+.msg-row.own.msg-first.msg-last .msg-bubble {
+  border-radius: 18px 18px 18px 18px;
+}
+/* First of group */
+.msg-row.own.msg-first:not(.msg-last) .msg-bubble {
+  border-radius: 18px 18px 4px 18px;
+}
+/* Middle */
+.msg-row.own.msg-mid:not(.msg-last) .msg-bubble {
+  border-radius: 18px 4px 4px 18px;
+}
+/* Last of group */
+.msg-row.own.msg-last:not(.msg-first) .msg-bubble {
+  border-radius: 18px 4px 18px 18px;
+}
+
+/* Bubble base (shared) */
+.msg-bubble {
+  padding: 9px 13px;
+  font-size: 13.5px; line-height: 1.5;
+  word-break: break-word;
+}
+
+/* Timestamp — sits below the last bubble of a group */
+.msg-time {
+  font-size: 10px; color: var(--txt-3);
+  margin-top: 3px; padding: 0 4px;
+}
+.msg-row.own .msg-time { text-align: right; }
 .date-divider{
   text-align:center;margin:12px 0 8px;
 }
@@ -643,11 +739,14 @@ ul{list-style:none}
   display:flex;flex-direction:column;align-items:center;gap:8px;
 }
 .gender-icon{
-  width:56px;height:56px;border-radius:50%;
-  background:rgba(255,255,255,.2);
+  width:66px;height:66px;border-radius:50%;
+  background:rgba(255,255,255,.15);
+  border:2px solid rgba(255,255,255,.3);
   display:flex;align-items:center;justify-content:center;
-  font-size:26px;
+  box-shadow:0 2px 12px rgba(0,0,0,.15);
 }
+.gender-icon svg{display:block;width:36px;height:36px}
+.gender-icon img{display:block;width:36px;height:36px;object-fit:contain}
 .gender-label{font-family:var(--fh);font-size:13px;font-weight:600;color:#fff}
 .gender-count{font-size:11px;color:rgba(255,255,255,.7)}
 .member-list{display:flex;flex-direction:column;gap:7px}
@@ -709,17 +808,110 @@ ul{list-style:none}
 /* 
    RESPONSIVE
  */
+/* ═══════════════════════════════════
+   MOBILE  (≤ 768px)
+   ═══════════════════════════════════ */
 @media(max-width:768px){
-  #app{grid-template-columns:1fr}
-  .sidebar{display:none}
-  .bottom-nav{display:block}
-  .main{padding-bottom:var(--bnav-h)}
-  .group-header{margin:7px 7px 0;min-height:50px}
-  .hdr-name{font-size:13px}
-  #toast-container{bottom:calc(var(--bnav-h) + 10px)}
-  .members-grid{grid-template-columns:1fr}
-  .members-col-header{grid-template-columns:1fr}
-  .fab{bottom:calc(var(--bnav-h) + 12px)}
+
+  /* ── Layout ── */
+  #app { grid-template-columns: 1fr }
+  .sidebar { display: none }
+  .main { padding-bottom: var(--bnav-h) }
+
+  /* ── Group header — flush, no border-radius on mobile ── */
+  .group-header {
+    margin: 0;
+    border-radius: 0;
+    min-height: 54px;
+    padding: 8px 12px;
+  }
+  .hdr-name { font-size: 13.5px }
+  .hdr-logo { width: 34px; height: 34px }
+
+  /* ── Bottom nav — taller touch targets, safe area aware ── */
+  .bottom-nav {
+    display: block;
+    height: calc(var(--bnav-h) + env(safe-area-inset-bottom));
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .bnav-inner { padding: 0 8px }
+  .bnav-btn {
+    min-width: 56px;
+    padding: 6px 10px;
+    font-size: 9.5px;
+  }
+
+  /* ── Chat messages ── */
+  .chat-messages {
+    padding: 8px 10px;
+  }
+
+  /* ── Message bubbles — wider on small screens ── */
+  .msg-content { max-width: 82% }
+  .msg-bubble  { font-size: 14px; padding: 9px 13px }
+
+  /* ── Input bar — compact, safe area aware ── */
+  .chat-input-bar {
+    padding: 8px 10px;
+    padding-bottom: calc(8px + env(safe-area-inset-bottom));
+    gap: 6px;
+  }
+  .chat-action-btn { width: 34px; height: 34px }
+  .chat-input-wrap { min-height: 38px; padding: 0 12px }
+  .chat-input-wrap textarea { font-size: 15px; padding: 8px 0 }
+  .chat-send { width: 38px; height: 38px }
+
+  /* ── Scroll-to-bottom button — above input bar ── */
+  .scroll-down-btn { bottom: calc(var(--bnav-h) + 60px) }
+
+  /* ── Reply preview ── */
+  .reply-preview { padding: 7px 12px }
+
+  /* ── Toast ── */
+  #toast-container { bottom: calc(var(--bnav-h) + 12px) }
+
+  /* ── Notice board ── */
+  .section-content { padding: 8px }
+  .post-card { border-radius: 14px }
+  .pc-title  { font-size: 14px }
+  .pc-text   { font-size: 13px }
+
+  /* ── Storage ── */
+  .storage-row { padding: 12px 14px }
+  .file-icon   { width: 36px; height: 36px; font-size: 16px }
+  .file-title  { font-size: 13px }
+
+  /* ── Members ── */
+  .members-grid          { grid-template-columns: 1fr }
+  .members-col-header    { grid-template-columns: 1fr }
+  .member-row            { padding: 10px 12px }
+  .gender-icon           { width: 48px; height: 48px; font-size: 22px }
+
+  /* ── FAB ── */
+  .fab { bottom: calc(var(--bnav-h) + 14px) }
+
+  /* ── Settings modal — full width, taller handle for easier swipe ── */
+  .settings-modal { padding: 12px 12px 32px }
+  .modal-handle   { width: 44px; height: 5px }
+  .settings-row   { padding: 13px 16px }
+
+  /* ── Reaction pills — bigger tap targets on mobile ── */
+  .reaction-pill { padding: 6px 12px; font-size: 15px; gap: 5px }
+  .reaction-pill .r-count { font-size: 12px }
+
+  /* React/reply button sizes on mobile — visibility handled below base rule */
+  .msg-react-btn { font-size: 18px; width: 34px; height: 34px }
+  .msg-reply-btn { width: 34px; height: 34px }
+  .msg-reply-btn svg { width: 16px; height: 16px }
+
+  /* ── Profile page ── */
+  .profile-wrap { padding: 0 0 60px }
+}
+
+/* ── Tablet (769–1024) ── */
+@media(min-width:769px) and (max-width:1024px){
+  :root { --sb-w: 200px }
+  .msg-content { max-width: 76% }
 }
 @media(min-width:769px) and (max-width:1024px){
   :root{--sb-w:200px}
@@ -855,76 +1047,438 @@ ul{list-style:none}
 .reply-preview-text{font-size:12px;color:rgba(255,255,255,.65);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .reply-preview-close{color:rgba(255,255,255,.4);font-size:18px;line-height:1;cursor:pointer;flex-shrink:0}
 .reply-preview-close:hover{color:#fff}
-.msg-reply-quote{
-  background:rgba(0,0,0,0.05);
-  border-left:3px solid var(--red);
-  border-radius:4px;
-  padding:5px 10px;
-  margin-bottom:4px;
-  font-size:12px;color:var(--txt-2);
+/* ── Quoted reply block — inside the bubble, above the message ── */
+.msg-reply-quote {
+  background: rgba(0,0,0,0.06);
+  border-left: 3px solid rgba(0,0,0,0.25);
+  border-radius: 6px;
+  padding: 6px 10px;
+  margin-bottom: 6px;
+  cursor: pointer;
+  transition: background .12s;
 }
-.msg-row.own .msg-reply-quote{background:rgba(255,255,255,0.12);color:rgba(255,255,255,.7);border-left-color:rgba(255,255,255,.4)}
+.msg-reply-quote:hover { background: rgba(0,0,0,0.1); }
+.mrq-sender {
+  display: block;
+  font-size: 11px; font-weight: 700;
+  color: var(--txt-2); margin-bottom: 2px;
+}
+.mrq-text {
+  display: block;
+  font-size: 12px; color: var(--txt-2);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  max-width: 220px;
+}
+/* Own bubble variant — white/light tones on red */
+.msg-row.own .msg-reply-quote {
+  background: rgba(255,255,255,0.15);
+  border-left-color: rgba(255,255,255,0.5);
+}
+.msg-row.own .mrq-sender { color: rgba(255,255,255,0.9); }
+.msg-row.own .mrq-text   { color: rgba(255,255,255,0.75); }
 
 /* 
    EMOJI REACTION PICKER
  */
-.reaction-bar{
-  display:flex;align-items:center;flex-wrap:wrap;gap:4px;
-  margin-top:4px;padding:0 2px;
+/* ── Image messages ── */
+.msg-img {
+  max-width: 220px; border-radius: 12px;
+  display: block; cursor: pointer;
+  transition: opacity .15s;
 }
-.reaction-pill{
-  display:inline-flex;align-items:center;gap:3px;
-  padding:2px 8px;border-radius:var(--r-pill);
-  background:var(--bg);border:1px solid var(--border);
-  font-size:12px;cursor:pointer;
-  transition:background .15s,border-color .15s;
-  user-select:none;
-}
-.reaction-pill:hover{background:var(--red-lt);border-color:var(--red)}
-.reaction-pill.own{background:var(--red-lt);border-color:var(--red);color:var(--red)}
-.reaction-pill .r-count{font-weight:600;font-size:11px;color:var(--txt-2)}
-.reaction-pill.own .r-count{color:var(--red)}
-.emoji-picker{
-  position:absolute;
-  background:var(--surface);
-  border:1px solid var(--border);
-  border-radius:var(--r-lg);
-  padding:8px 10px;
-  display:flex;gap:6px;flex-wrap:wrap;
-  box-shadow:var(--sh-md);
-  z-index:50;
-  bottom:100%;margin-bottom:4px;
-}
-.emoji-opt{
-  font-size:20px;cursor:pointer;
-  border-radius:6px;padding:3px 4px;
-  transition:transform .12s,background .12s;
-  user-select:none;
-}
-.emoji-opt:hover{transform:scale(1.25);background:var(--bg)}
+.msg-img:hover { opacity: .92; }
 
-/* 
-   CONTEXT MENU (right-click on message)
- */
-.ctx-menu{
-  position:fixed;
-  background:var(--surface);
-  border:1px solid var(--border);
-  border-radius:var(--r-md);
-  padding:5px;
-  box-shadow:var(--sh-md);
-  z-index:100;
-  min-width:150px;
+/* ═══════════════════════════════════════════════════════
+   REACTION SYSTEM  —  True Messenger-style
+   ═══════════════════════════════════════════════════════ */
+
+/* ── Bubble wrapper — needed so the react button can be
+      positioned relative to the bubble without breaking layout ── */
+.msg-bubble-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  /* own messages: row-reverse so button is on the left */
 }
-.ctx-item{
-  display:flex;align-items:center;gap:8px;
-  padding:8px 12px;border-radius:var(--r-sm);
-  font-size:13px;color:var(--txt);cursor:pointer;
-  transition:background .15s;
+.msg-row.own .msg-bubble-wrap {
+  flex-direction: row-reverse;
 }
-.ctx-item:hover{background:var(--bg)}
-.ctx-item--danger{color:var(--red)}
-.ctx-item--danger:hover{background:var(--red-lt)}
+
+/* ── Action buttons beside bubble (react 😊 + reply ↩) ──
+   Both hidden by default, appear when hovering the bubble-wrap on desktop.
+   They share the same base style — .msg-action-btn ── */
+.msg-react-btn,
+.msg-reply-btn {
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  margin: 0 2px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: var(--sh-sm);
+  cursor: pointer;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .15s, background .12s, transform .12s;
+  font-family: var(--fb);
+  padding: 0;
+  color: var(--txt-2);
+}
+.msg-react-btn { font-size: 16px; }
+.msg-reply-btn { font-size: 14px; }
+
+/* Show both on desktop hover */
+@media (hover: hover) {
+  .msg-bubble-wrap:hover .msg-react-btn,
+  .msg-bubble-wrap:hover .msg-reply-btn {
+    opacity: 1;
+    pointer-events: all;
+  }
+  .msg-react-btn:hover,
+  .msg-reply-btn:hover {
+    background: var(--red-light);
+    border-color: var(--red);
+    color: var(--red);
+    transform: scale(1.12);
+  }
+}
+
+/* Touch devices — always show react + reply buttons beside bubbles.
+   This must come AFTER the base opacity:0 rule to win the cascade. */
+@media (hover: none), (max-width: 768px) {
+  .msg-react-btn,
+  .msg-reply-btn {
+    opacity: 1 !important;
+    pointer-events: all !important;
+  }
+}
+
+/* ── Reaction pills below the bubble ── */
+.reaction-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 5px;
+  padding: 0 2px;
+  min-height: 0;
+}
+.reaction-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 9px;
+  border-radius: var(--r-pill);
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  user-select: none;
+  box-shadow: var(--sh-sm);
+  transition: background .14s, border-color .14s, transform .12s;
+  /* button reset */
+  font-family: var(--fb);
+  color: var(--txt);
+}
+.reaction-pill:hover {
+  background: var(--red-light);
+  border-color: var(--red);
+  transform: scale(1.06);
+}
+.reaction-pill.own {
+  background: var(--red-light);
+  border-color: var(--red);
+}
+.reaction-pill .r-count {
+  font-weight: 700;
+  font-size: 11px;
+  color: var(--txt-2);
+  line-height: 1;
+}
+.reaction-pill.own .r-count { color: var(--red); }
+
+/* ── Emoji picker — the floating pill that pops up ──
+   Matches Messenger exactly: pill-shaped container, big emoji buttons,
+   bounce animation, tooltip on hover. ── */
+.emoji-reaction-picker {
+  position: fixed;
+  z-index: 9999;
+  /* pill shape */
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 7px 10px;
+  /* row of buttons */
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  /* depth */
+  box-shadow:
+    0 4px 24px rgba(0,0,0,0.16),
+    0 1px 6px  rgba(0,0,0,0.10);
+  /* enter animation */
+  animation: picker-pop .2s cubic-bezier(.34,1.56,.64,1) both;
+  /* never spill past viewport edge */
+  max-width: calc(100vw - 16px);
+  /* start invisible then position lands in rAF */
+  opacity: 1;
+}
+@keyframes picker-pop {
+  from { opacity: 0; transform: scale(0.6) translateY(8px); }
+  to   { opacity: 1; transform: scale(1)   translateY(0);   }
+}
+
+/* Each emoji option inside the picker */
+.emoji-reaction-opt {
+  position: relative;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  user-select: none;
+  /* button reset */
+  background: none;
+  border: none;
+  padding: 0;
+  font-family: var(--fb);
+  transition: background .12s;
+}
+/* The emoji glyph — scales up on hover (the Messenger bounce) */
+.ero-emoji {
+  font-size: 26px;
+  line-height: 1;
+  display: block;
+  transition: transform .18s cubic-bezier(.34,1.56,.64,1);
+  pointer-events: none;
+}
+@media (hover: hover) {
+  .emoji-reaction-opt:hover { background: var(--bg); }
+  .emoji-reaction-opt:hover .ero-emoji {
+    transform: scale(1.5) translateY(-4px);
+  }
+}
+/* Active / already-selected state */
+.emoji-reaction-opt.selected { background: var(--red-light); }
+.emoji-reaction-opt.selected .ero-emoji { transform: scale(1.15); }
+
+/* Tooltip label above each emoji on desktop hover */
+.ero-label {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0,0,0,0.82);
+  color: #fff;
+  border-radius: 6px;
+  font-size: 10px;
+  font-weight: 500;
+  font-family: var(--fb);
+  padding: 3px 8px;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity .12s;
+  z-index: 1;
+}
+@media (hover: hover) {
+  .emoji-reaction-opt:hover .ero-label { opacity: 1; }
+}
+
+/* ── Context / action menu (right-click desktop only) ── */
+.ctx-menu {
+  position: fixed;
+  z-index: 9998;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: 5px;
+  box-shadow: var(--sh-md);
+  min-width: 155px;
+  animation: ctx-pop .14s ease both;
+}
+@keyframes ctx-pop {
+  from { opacity: 0; transform: scale(0.9) translateY(-4px); }
+  to   { opacity: 1; transform: scale(1)   translateY(0); }
+}
+.ctx-item {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 10px 12px;
+  border-radius: var(--r-sm);
+  font-size: 13.5px;
+  color: var(--txt);
+  cursor: pointer;
+  transition: background .12s;
+}
+.ctx-item svg { flex-shrink: 0; opacity: .65; }
+.ctx-item:hover { background: var(--bg); }
+.ctx-item--danger { color: var(--red); }
+.ctx-item--danger svg { opacity: .8; }
+.ctx-item--danger:hover { background: var(--red-light); }
+
+/* ═══════════════════════════════════════════════════════
+   MOBILE BOTTOM SHEETS
+   — Emoji reaction picker (touch devices)
+   — Action menu (Reply / Delete) on long press
+   ═══════════════════════════════════════════════════════ */
+
+/* Shared backdrop */
+.react-sheet-backdrop,
+.action-sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  background: rgba(0,0,0,0);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  transition: background .25s;
+  /* tap-through until open */
+  pointer-events: none;
+}
+.react-sheet-backdrop.open,
+.action-sheet-backdrop.open {
+  background: rgba(0,0,0,0.42);
+  pointer-events: all;
+}
+
+/* ── Emoji reaction sheet ── */
+.react-sheet {
+  width: 100%;
+  max-width: 540px;
+  background: var(--surface);
+  border-radius: 20px 20px 0 0;
+  padding: 10px 20px calc(20px + env(safe-area-inset-bottom));
+  transform: translateY(100%);
+  transition: transform .28s cubic-bezier(.4,0,.2,1);
+  box-shadow: 0 -4px 24px rgba(0,0,0,0.14);
+}
+.react-sheet-backdrop.open .react-sheet {
+  transform: translateY(0);
+}
+.react-sheet-handle {
+  width: 40px; height: 4px;
+  background: var(--border);
+  border-radius: 4px;
+  margin: 0 auto 14px;
+}
+.react-sheet-label {
+  font-family: var(--fh);
+  font-size: 13px; font-weight: 600;
+  color: var(--txt-3);
+  text-align: center;
+  margin-bottom: 16px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+/* Grid: 5 emojis per row */
+.react-sheet-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+}
+.react-sheet-opt {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 4px;
+  border-radius: 14px;
+  background: none;
+  border: 2px solid transparent;
+  cursor: pointer;
+  font-family: var(--fb);
+  transition: background .14s, border-color .14s, transform .12s;
+  -webkit-tap-highlight-color: transparent;
+}
+.react-sheet-opt:active {
+  transform: scale(0.92);
+  background: var(--bg);
+}
+.react-sheet-opt.selected {
+  background: var(--red-light);
+  border-color: var(--red);
+}
+.rso-emoji {
+  font-size: 34px;
+  line-height: 1;
+  display: block;
+}
+.rso-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--txt-3);
+  text-align: center;
+}
+.react-sheet-opt.selected .rso-label { color: var(--red); }
+
+/* ── Action sheet (Reply / Delete) ── */
+.action-sheet {
+  width: 100%;
+  max-width: 540px;
+  background: var(--surface);
+  border-radius: 20px 20px 0 0;
+  padding: 10px 16px calc(16px + env(safe-area-inset-bottom));
+  transform: translateY(100%);
+  transition: transform .28s cubic-bezier(.4,0,.2,1);
+  box-shadow: 0 -4px 24px rgba(0,0,0,0.14);
+}
+.action-sheet-backdrop.open .action-sheet {
+  transform: translateY(0);
+}
+.action-sheet-handle {
+  width: 40px; height: 4px;
+  background: var(--border);
+  border-radius: 4px;
+  margin: 0 auto 16px;
+}
+.action-sheet-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  padding: 16px 12px;
+  border-radius: 12px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: var(--fb);
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--txt);
+  text-align: left;
+  transition: background .12s;
+  -webkit-tap-highlight-color: transparent;
+}
+.action-sheet-item + .action-sheet-item {
+  border-top: 1px solid var(--border);
+}
+.action-sheet-item:active { background: var(--bg); }
+.action-sheet-item.danger { color: var(--red); }
+.asi-icon {
+  width: 38px; height: 38px;
+  border-radius: 50%;
+  background: var(--bg);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  color: var(--txt-2);
+}
+.action-sheet-item.danger .asi-icon { color: var(--red); }
+.asi-label { flex: 1 }
+
+
+
+
 
 /* 
    MAINTENANCE PAGE
