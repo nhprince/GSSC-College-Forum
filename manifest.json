@@ -1,0 +1,23 @@
+{
+  "name": "GSSC Science Official",
+  "short_name": "GSSC",
+  "description": "The official community platform for the Science Department of Govt. Shaheed Suhrawardy College (GSSC).",
+  "start_url": "/?utm_source=pwa",
+  "display": "standalone",
+  "background_color": "#EFEFEF",
+  "theme_color": "#C0000C",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/assets/img/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/assets/img/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

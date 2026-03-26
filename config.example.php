@@ -14,7 +14,7 @@ define('APP_URL',   'https://yourdomain.com');
 define('APP_ENV',   'development');   // change to 'production' on live
 
 // ── Session ─────────────────────────────────────────────────
-define('SESSION_LIFETIME', 3600 * 8); // 8 hours
+define('SESSION_LIFETIME', 3600 * 24 * 30); // 30 days
 
 // ── Uploads ─────────────────────────────────────────────────
 define('UPLOAD_MAX_SIZE',   10 * 1024 * 1024); // 10 MB
@@ -23,6 +23,11 @@ define('ALLOWED_FILE_TYPES', ['pdf','doc','docx','ppt','pptx','jpg','jpeg','png'
 // ── Email ───────────────────────────────────────────────────
 define('ADMIN_EMAIL', 'admin@yourdomain.com');
 define('MAIL_FROM',   'noreply@yourdomain.com');
+
+// ── Web Push (VAPID) ────────────────────────────────────────
+define('VAPID_SUBJECT',    'mailto:' . ADMIN_EMAIL);
+define('VAPID_PUBLIC_KEY', 'BCrCRjQUG0GtBwLg_3wI0vWxh443brVDM0EQIYq8rXeCg182Asix7JP7TOA7Ym7XPnoZC0J4yDTDzJOJXa-ETdc');
+define('VAPID_PRIVATE_KEY', 'QhIoSUaeuW6kd0vQrddNf0BY-OcULWRqHjDQC7sKDEs');
 
 // ── Error display ────────────────────────────────────────────
 if (APP_ENV === 'development') {

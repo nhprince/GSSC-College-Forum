@@ -65,6 +65,105 @@ function updateSetting(string $key, string $value): void {
     ")->execute([$key, $value, $user['id']]);
 }
 
+/*  Push Notifications  */
+function sendPushNotification(int $userId, string $title, string $body, ?string $url = null): void {
+    if (!file_exists(__DIR__ . '/../vendor/autoload.php')) return;
+    require_once __DIR__ . '/../vendor/autoload.php';
+
+    try {
+        $pdo = getDB();
+        $stmt = $pdo->prepare("SELECT endpoint, p256dh, auth FROM push_subscriptions WHERE user_id = ?");
+        $stmt->execute([$userId]);
+        $subscriptions = $stmt->fetchAll();
+
+        if (empty($subscriptions)) return;
+
+        $auth = [
+            'VAPID' => [
+                'subject'    => VAPID_SUBJECT,
+                'publicKey'  => VAPID_PUBLIC_KEY,
+                'privateKey' => VAPID_PRIVATE_KEY,
+            ],
+        ];
+
+        $webPush = new \Minishlink\WebPush\WebPush($auth);
+        $payload = json_encode(['title' => $title, 'body' => $body, 'url' => $url]);
+
+        foreach ($subscriptions as $sub) {
+            $webPush->queueNotification(
+                \Minishlink\WebPush\Subscription::create([
+                    'endpoint' => $sub['endpoint'],
+                    'publicKey' => $sub['p256dh'],
+                    'authToken' => $sub['auth'],
+                ]),
+                $payload
+            );
+        }
+
+        foreach ($webPush->flush() as $report) {
+            $endpoint = $report->getEndpoint();
+            if (!$report->isSuccess()) {
+                // Remove invalid/expired subscriptions
+                if ($report->isSubscriptionExpired()) {
+                    $pdo->prepare("DELETE FROM push_subscriptions WHERE endpoint = ?")->execute([$endpoint]);
+                }
+                error_log("Push failed: " . $report->getReason());
+            }
+        }
+    } catch (\Throwable $e) {
+        error_log('Push failed: ' . $e->getMessage());
+    }
+}
+
+function sendPushToAll(string $title, string $body, ?string $url = null, ?int $exceptUserId = null): void {
+    if (!file_exists(__DIR__ . '/../vendor/autoload.php')) return;
+    require_once __DIR__ . '/../vendor/autoload.php';
+
+    try {
+        $pdo = getDB();
+        $stmt = $pdo->prepare("
+            SELECT s.endpoint, s.p256dh, s.auth, u.id as user_id
+            FROM push_subscriptions s
+            JOIN users u ON u.id = s.user_id
+            WHERE u.is_active = 1 AND u.notif_enabled = 1 " . ($exceptUserId ? "AND u.id != ?" : "") . "
+        ");
+        $stmt->execute($exceptUserId ? [$exceptUserId] : []);
+        $subscriptions = $stmt->fetchAll();
+
+        if (empty($subscriptions)) return;
+
+        $auth = [
+            'VAPID' => [
+                'subject'    => VAPID_SUBJECT,
+                'publicKey'  => VAPID_PUBLIC_KEY,
+                'privateKey' => VAPID_PRIVATE_KEY,
+            ],
+        ];
+
+        $webPush = new \Minishlink\WebPush\WebPush($auth);
+        $payload = json_encode(['title' => $title, 'body' => $body, 'url' => $url]);
+
+        foreach ($subscriptions as $sub) {
+            $webPush->queueNotification(
+                \Minishlink\WebPush\Subscription::create([
+                    'endpoint' => $sub['endpoint'],
+                    'publicKey' => $sub['p256dh'],
+                    'authToken' => $sub['auth'],
+                ]),
+                $payload
+            );
+        }
+
+        foreach ($webPush->flush() as $report) {
+            if (!$report->isSuccess() && $report->isSubscriptionExpired()) {
+                $pdo->prepare("DELETE FROM push_subscriptions WHERE endpoint = ?")->execute([$report->getEndpoint()]);
+            }
+        }
+    } catch (\Throwable $e) {
+        error_log('Push to all failed: ' . $e->getMessage());
+    }
+}
+
 /*  Activity log  */
 function logAction(string $action, ?string $targetType = null, ?int $targetId = null, array $meta = []): void {
     try {

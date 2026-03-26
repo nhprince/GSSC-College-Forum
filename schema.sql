@@ -222,6 +222,30 @@ CREATE TABLE IF NOT EXISTS `rate_limits` (
   INDEX `idx_window_start` (`window_start`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+--  PERSISTENT LOGINS (Remember Me)
+CREATE TABLE IF NOT EXISTS `persistent_logins` (
+  `id`            INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  `user_id`       INT UNSIGNED NOT NULL,
+  `token_hash`    VARCHAR(64)  NOT NULL,
+  `expires_at`    DATETIME NOT NULL,
+  `created_at`    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY `uq_token_hash` (`token_hash`),
+  INDEX `idx_expires_at` (`expires_at`),
+  CONSTRAINT `fk_persist_user` FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--  PUSH SUBSCRIPTIONS
+CREATE TABLE IF NOT EXISTS `push_subscriptions` (
+  `id`            INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  `user_id`       INT UNSIGNED NOT NULL,
+  `endpoint`      TEXT NOT NULL,
+  `p256dh`        VARCHAR(255) NOT NULL,
+  `auth`          VARCHAR(255) NOT NULL,
+  `created_at`    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  INDEX `idx_user_id` (`user_id`),
+  CONSTRAINT `fk_push_user` FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 SET FOREIGN_KEY_CHECKS = 1;
 
 -- ============================================================
