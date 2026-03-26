@@ -6,15 +6,48 @@ function initSession(): void {
     ini_set('session.cookie_httponly', '1');
     ini_set('session.cookie_samesite', 'Strict');
     if (APP_ENV === 'production') ini_set('session.cookie_secure', '1');
+
+    // To make login persistent (Messenger-style), we set the session cookie
+    // to last for a long time (e.g. 30 days).
     ini_set('session.gc_maxlifetime', (string)SESSION_LIFETIME);
-    // Persistent login: set cookie expiry so browser keeps it after tab/browser close.
-    // Without this, the browser discards the session cookie on close (default behaviour).
     ini_set('session.cookie_lifetime', (string)SESSION_LIFETIME);
+
     session_start();
+
+    // If session is empty, try to restore from a "Remember Me" cookie.
+    if (empty($_SESSION['logged_in']) && !empty($_COOKIE['remember_me'])) {
+        try {
+            $pdo = getDB();
+            $token = $_COOKIE['remember_me'];
+            $tokenHash = hash('sha256', $token);
+
+            $stmt = $pdo->prepare("
+                SELECT u.* FROM persistent_logins pl
+                JOIN users u ON u.id = pl.user_id
+                WHERE pl.token_hash = ? AND pl.expires_at > NOW() AND u.is_active = 1 AND u.is_approved = 1
+                LIMIT 1
+            ");
+            $stmt->execute([$tokenHash]);
+            $user = $stmt->fetch();
+
+            if ($user) {
+                loginUser($user, false); // Log in without regenerating the persistent token
+            } else {
+                // Invalid or expired token: clear the cookie
+                setcookie('remember_me', '', time() - 3600, '/', '', APP_ENV === 'production', true);
+            }
+        } catch (\Throwable $_) {}
+    }
 }
 
 function requireLogin(): void {
     if (empty($_SESSION['logged_in'])) {
+        // Check if we are on an API request
+        if (str_starts_with($_SERVER['REQUEST_URI'] ?? '', '/api/')) {
+            http_response_code(401);
+            echo json_encode(['success' => false, 'error' => 'Unauthorized', 'code' => 'UNAUTHORIZED']);
+            exit;
+        }
         header('Location: /login.php');
         exit;
     }
@@ -58,7 +91,7 @@ function currentUser(): array {
     ];
 }
 
-function loginUser(array $user): void {
+function loginUser(array $user, bool $generateToken = true): void {
     session_regenerate_id(true);
     $_SESSION['user_id']       = $user['id'];
     $_SESSION['full_name']     = $user['full_name'];
@@ -73,9 +106,30 @@ function loginUser(array $user): void {
     $_SESSION['csrf_token']    = bin2hex(random_bytes(32));
     $_SESSION['last_active']   = time();
     $_SESSION['last_db_ping']  = time();
+
+    if ($generateToken) {
+        try {
+            $token = bin2hex(random_bytes(32));
+            $tokenHash = hash('sha256', $token);
+            $expiry = date('Y-m-d H:i:s', time() + SESSION_LIFETIME);
+
+            $pdo = getDB();
+            $pdo->prepare("INSERT INTO persistent_logins (user_id, token_hash, expires_at) VALUES (?, ?, ?)")
+                ->execute([$user['id'], $tokenHash, $expiry]);
+
+            setcookie('remember_me', $token, time() + SESSION_LIFETIME, '/', '', APP_ENV === 'production', true);
+        } catch (\Throwable $_) {}
+    }
 }
 
 function logout(): void {
+    if (!empty($_COOKIE['remember_me'])) {
+        try {
+            $tokenHash = hash('sha256', $_COOKIE['remember_me']);
+            getDB()->prepare("DELETE FROM persistent_logins WHERE token_hash = ?")->execute([$tokenHash]);
+        } catch (\Throwable $_) {}
+        setcookie('remember_me', '', time() - 3600, '/', '', APP_ENV === 'production', true);
+    }
     session_unset();
     session_destroy();
     header('Location: /login.php');

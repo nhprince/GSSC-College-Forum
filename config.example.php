@@ -14,7 +14,7 @@ define('APP_URL',   'https://yourdomain.com');
 define('APP_ENV',   'development');   // change to 'production' on live
 
 // ── Session ─────────────────────────────────────────────────
-define('SESSION_LIFETIME', 3600 * 8); // 8 hours
+define('SESSION_LIFETIME', 3600 * 24 * 30); // 30 days
 
 // ── Uploads ─────────────────────────────────────────────────
 define('UPLOAD_MAX_SIZE',   10 * 1024 * 1024); // 10 MB
