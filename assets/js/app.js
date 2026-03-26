@@ -368,6 +368,62 @@ async function refreshOnlineCount() {
   } catch(_) {}
 }
 
+/* PWA Service Worker Registration and Push Notifications */
+async function registerSW() {
+  if ('serviceWorker' in navigator) {
+    try {
+      const reg = await navigator.serviceWorker.register('/sw.js');
+      console.log('SW registered:', reg);
+
+      // Request notification permission and subscribe
+      if ('PushManager' in window) {
+        const permission = await Notification.requestPermission();
+        if (permission === 'granted') {
+          subscribeUserToPush(reg);
+        }
+      }
+    } catch (e) {
+      console.error('SW registration failed:', e);
+    }
+  }
+}
+
+async function subscribeUserToPush(registration) {
+  try {
+    const subscribeOptions = {
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+    };
+
+    const subscription = await registration.pushManager.subscribe(subscribeOptions);
+    console.log('User subscribed:', subscription);
+
+    // Send subscription to server
+    const subJson = subscription.toJSON();
+    await api('settings/push_subscribe.php', {
+      method: 'POST',
+      body: JSON.stringify({
+        endpoint: subJson.endpoint,
+        p256dh: subJson.keys.p256dh,
+        auth: subJson.keys.auth
+      })
+    });
+  } catch (e) {
+    console.error('Failed to subscribe to push:', e);
+  }
+}
+
+function urlBase64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding).replace(/\-/g, '+').replace(/_/g, '/');
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+}
+
 /* Init */
 document.addEventListener('DOMContentLoaded', () => {
   goTo('chat');
@@ -375,4 +431,5 @@ document.addEventListener('DOMContentLoaded', () => {
   refreshOnlineCount();
   setInterval(refreshBadges, 20000);
   setInterval(refreshOnlineCount, 30000);
+  registerSW();
 });

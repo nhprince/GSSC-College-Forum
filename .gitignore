@@ -5,6 +5,7 @@ config.local.php
 # Runtime directories
 uploads/
 logs/
+vendor/
 
 # Build artifacts
 *.zip

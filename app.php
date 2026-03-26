@@ -25,6 +25,7 @@ $sound = (bool)($user['sound_enabled'] ?? true);
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700&family=DM+Sans:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/assets/css/main.css">
+  <link rel="manifest" href="/manifest.json">
   <style>
     html,body{height:100%;margin:0;padding:0;background:#EFEFEF}
     #app{display:grid;grid-template-columns:1fr;height:100dvh;overflow:hidden}
@@ -706,6 +707,7 @@ const CURRENT_USER = {
   avatar:   <?= json_encode($user['avatar']) ?>,
   role:     <?= json_encode($user['role']) ?>,
 };
+const VAPID_PUBLIC_KEY = <?= json_encode(VAPID_PUBLIC_KEY) ?>;
 // doLogout is defined in app.js (dialog system included there)
 </script>
 

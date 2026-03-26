@@ -195,6 +195,14 @@ elseif ($method === 'POST') {
         }
 
         logAction('post.created', 'post', $postId, ['type' => $postType, 'title' => $title]);
+
+        // Push notification for new notices and announcements
+        if ($postType === 'announcement' || $postType === 'event' || $postType === 'poll') {
+            $label = ucfirst($postType);
+            if ($postType === 'announcement') $label = 'Notice';
+            sendPushToAll("New $label: $title", mb_substr(strip_tags($body), 0, 100), "/?page=notices", $user['id']);
+        }
+
         ob_clean();
         jsonSuccess(['id' => $postId], 201);
 
